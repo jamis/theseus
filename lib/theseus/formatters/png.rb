@@ -37,7 +37,7 @@ module Theseus
         @d1 = @options[:cell_padding]
         @d2 = @options[:cell_size] - @options[:cell_padding]
         @w1 = (@options[:wall_width] / 2.0).floor
-        @w2 = (@options[:wall_width] / 2.0).ceil
+        @w2 = ((@options[:wall_width] - 1) / 2.0).floor
 
         maze.height.times do |y|
           py = @options[:outer_padding] + y * @options[:cell_size]
@@ -71,7 +71,7 @@ module Theseus
           canvas.fill_rect(x + @d1 - @w1, y - (@w1 * direction), x + @d1 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
           canvas.fill_rect(x + @d2 - @w2, y - (@w1 * direction), x + @d2 + @w1, y + (@d1 + @w2) * direction, @options[:wall_color])
         else
-          canvas.fill_rect(x + @d1, y + (@d1 - @w1) * direction, x + @d2, y + (@d1 + @w2) * direction, @options[:wall_color])
+          canvas.fill_rect(x + @d1 - @w1, y + (@d1 - @w1) * direction, x + @d2 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
         end
       end
 
@@ -81,7 +81,7 @@ module Theseus
           canvas.fill_rect(x - (@w1 * direction), y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d1 + @w2, @options[:wall_color])
           canvas.fill_rect(x - (@w1 * direction), y + @d2 - @w2, x + (@d1 + @w2) * direction, y + @d2 + @w1, @options[:wall_color])
         else
-          canvas.fill_rect(x + (@d1 - @w1) * direction, y + @d1, x + (@d1 + @w2) * direction, y + @d2, @options[:wall_color])
+          canvas.fill_rect(x + (@d1 - @w1) * direction, y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d2 + @w2, @options[:wall_color])
         end
       end
     end
