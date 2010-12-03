@@ -15,6 +15,7 @@ module Theseus
     DIRECTIONS = [NORTH, SOUTH, EAST, WEST]
 
     attr_reader :width, :height
+    attr_reader :entrance, :exit
 
     def self.generate(width, height, options={})
       maze = new(width, height, options)
@@ -25,6 +26,8 @@ module Theseus
     def initialize(width, height, options={})
       @width = width
       @height = height
+      @entrance = options[:entrance] || [-1,0]
+      @exit = options[:exit] || [@width,@height-1]
       @randomness = options[:randomness] || 100
       @mask = options[:mask] || TransparentMask.new
       @weave = options[:weave] || 0
@@ -110,6 +113,8 @@ module Theseus
 
         while @tries.empty?
           if @stack.empty?
+            add_opening_from(@entrance)
+            add_opening_from(@exit)
             @generated = true
             return nil
           else
@@ -287,6 +292,21 @@ module Theseus
         str << "\n"
       end
       str
+    end
+
+    def add_opening_from(point)
+      x, y = point
+      if in_bounds?(x, y)
+        # nothing to be done
+      elsif in_bounds?(x-1, y)
+        @cells[y][x-1] |= EAST
+      elsif in_bounds?(x+1, y)
+        @cells[y][x+1] |= WEST
+      elsif in_bounds?(x, y-1)
+        @cells[y-1][x] |= SOUTH
+      elsif in_bounds?(x, y+1)
+        @cells[y+1][x] |= NORTH
+      end
     end
   end
 end

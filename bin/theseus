@@ -10,6 +10,8 @@ mask = width = height = nil
 randomness = 50
 sparse = 0
 weave = false
+enter_at = nil
+exit_at = nil
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 
@@ -78,6 +80,14 @@ OptionParser.new do |opts|
     srand(s)
   end
 
+  opts.on("-E", "--enter [X,Y]", "the entrance of the maze (default -1,0)") do |s|
+    enter_at = s.split(/,/).map { |v| v.to_i }
+  end
+
+  opts.on("-X", "--exit [X,Y]", "the exit of the maze (default width,height-1)") do |s|
+    exit_at = s.split(/,/).map { |v| v.to_i }
+  end
+
   opts.on("-h", "--help", "this help info") do
     puts opts
     exit
@@ -87,7 +97,7 @@ end.parse!
 if animate
   abort "sparse cannot be used for animated mazes" if sparse > 0
 
-  png_opts[:background] = ChunkyPNG::Color.from_hex(png_opts[:background]) unless Fixnum == png_opts[:background]
+  png_opts[:background] = ChunkyPNG::Color.from_hex(png_opts[:background]) unless Fixnum === png_opts[:background]
 
   if png_opts[:background] & 0xFF != 0xFF
     warn "if you intend to make a movie out of the frames from the animation,"
@@ -98,7 +108,7 @@ end
 mask ||= Theseus::TransparentMask.new(width || 50, height || 50)
 width ||= mask.width
 height ||= mask.height
-maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness, weave: weave)
+maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness, weave: weave, entrance: enter_at, exit: exit_at)
 
 if animate
   step = 0
