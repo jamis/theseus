@@ -32,6 +32,10 @@ OptionParser.new do |opts|
     png_opts[:wall_color] = c
   end
 
+  opts.on("-U", "--solutioncolor COLOR", "rgba hex color for the answer path (default %08X)" % png_opts[:solution_color]) do |c|
+    png_opts[:solution_color] = c
+  end
+
   opts.on("-c", "--cell N", Integer, "size of each cell (default #{png_opts[:cell_size]})") do |c|
     png_opts[:cell_size] = c
   end
@@ -88,6 +92,10 @@ OptionParser.new do |opts|
     exit_at = s.split(/,/).map { |v| v.to_i }
   end
 
+  opts.on("-v", "--[no-]solve", "whether to display the solution of the maze") do |s|
+    png_opts[:solution] = s
+  end
+
   opts.on("-h", "--help", "this help info") do
     puts opts
     exit
@@ -96,6 +104,7 @@ end.parse!
 
 if animate
   abort "sparse cannot be used for animated mazes" if sparse > 0
+  abort "cannot specify both solve and animate" if solve
 
   png_opts[:background] = ChunkyPNG::Color.from_hex(png_opts[:background]) unless Fixnum === png_opts[:background]
 

@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require 'theseus/mask'
+require 'theseus/solver'
 
 module Theseus
   class Maze
@@ -56,6 +57,14 @@ module Theseus
 
     def generated?
       @generated
+    end
+
+    def start
+      adjacent_point(@entrance)
+    end
+
+    def finish
+      adjacent_point(@exit)
     end
 
     def dx(direction)
@@ -195,6 +204,10 @@ module Theseus
       end
     end
 
+    def solve(a=start, b=finish)
+      Solver.new(self, a, b).solution
+    end
+
     def inspect
       "#<Maze:0x%X %dx%d %s>" % [
         object_id, @width, @height,
@@ -306,6 +319,21 @@ module Theseus
         @cells[y-1][x] |= SOUTH
       elsif in_bounds?(x, y+1)
         @cells[y+1][x] |= NORTH
+      end
+    end
+
+    def adjacent_point(point)
+      x, y = point
+      if in_bounds?(x, y)
+        [x, y]
+      elsif in_bounds?(x-1, y)
+        [x-1, y]
+      elsif in_bounds?(x+1, y)
+        [x+1, y]
+      elsif in_bounds?(x, y-1)
+        [x, y-1]
+      elsif in_bounds?(x, y+1)
+        [x, y+1]
       end
     end
   end

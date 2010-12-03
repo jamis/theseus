@@ -6,13 +6,15 @@ module Theseus
   module Formatters
     class PNG
       DEFAULTS = {
-        :cell_size     => 5,
-        :wall_width    => 1,
-        :wall_color    => 0x000000FF,
-        :cell_color    => 0xFFFFFFFF,
-        :background    => 0x00000000,
-        :outer_padding => 0,
-        :cell_padding  => 1,
+        :cell_size      => 5,
+        :wall_width     => 1,
+        :wall_color     => 0x000000FF,
+        :cell_color     => 0xFFFFFFFF,
+        :solution_color => 0xFF0000FF,
+        :background     => 0x00000000,
+        :outer_padding  => 0,
+        :cell_padding   => 1,
+        :solution       => false
       }
 
       def initialize(maze, options={})
@@ -21,7 +23,7 @@ module Theseus
         width  = @options[:outer_padding] * 2 + maze.width * @options[:cell_size]
         height = @options[:outer_padding] * 2 + maze.height * @options[:cell_size]
         
-        [:background, :wall_color, :cell_color].each do |c|
+        [:background, :wall_color, :cell_color, :solution_color].each do |c|
           @options[c] = ChunkyPNG::Color.from_hex(@options[c]) unless Fixnum === @options[c]
         end
 
@@ -47,11 +49,25 @@ module Theseus
           end
         end
 
+        if @options[:solution]
+          px = py = nil
+          maze.solve.each do |x,y|
+            x = @options[:outer_padding] + x * @options[:cell_size] + @options[:cell_size] / 2
+            y = @options[:outer_padding] + y * @options[:cell_size] + @options[:cell_size] / 2
+            draw_solution_segment(canvas, px, py, x, y) if px
+            px, py = x, y
+          end
+        end
+
         @blob = canvas.to_blob
       end
 
       def to_blob
         @blob
+      end
+
+      def draw_solution_segment(canvas, x0, y0, x1, y1)
+        canvas.line(x0, y0, x1, y1, @options[:solution_color])
       end
 
       def draw_cell(canvas, x, y, cell)
