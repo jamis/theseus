@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'theseus'
+require 'theseus/formatters/png'
+
+animate = false
+output = "maze"
+mask = width = height = nil
+randomness = 50
+
+png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
+
+OptionParser.new do |opts|
+  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
+    mask = Theseus::Mask.from_png(m)
+  end
+
+  opts.on("-B", "--background COLOR", "rgba hex background color for maze (default %08X)" % png_opts[:background]) do |c|
+    png_opts[:background] = c
+  end
+
+  opts.on("-c", "--cell N", Integer, "size of each cell (default #{png_opts[:cell_size]})") do |c|
+    png_opts[:cell_size] = c
+  end
+
+  opts.on("-b", "--border N", Integer, "border padding around outside (default #{png_opts[:outer_padding]})") do |c|
+    png_opts[:outer_padding] = c
+  end
+
+  opts.on("-p", "--padding N", Integer, "padding around cell (default #{png_opts[:cell_padding]})") do |c|
+    png_opts[:cell_padding] = c
+  end
+
+  opts.on("-W", "--wall N", Integer, "thickness of walls (default #{png_opts[:wall_width]})") do |c|
+    png_opts[:wall_width] = c
+  end
+
+  opts.on("-a", "--[no-]animate", "emit frames for each step") do |v|
+    animate = v
+  end
+
+  opts.on("-o", "--output FILE", "where to save the file(s)") do |f|
+    output = f
+  end
+
+  opts.on("-w", "--width N", Integer, "width of the maze") do |w|
+    width = w
+  end
+
+  opts.on("-H", "--height N", Integer, "height of the maze") do |h|
+    height = h
+  end
+
+  opts.on("-r", "--random N", Integer, "0-100, randomness of maze (default #{randomness})") do |r|
+    randomness = r
+  end
+
+  opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
+    srand(s)
+  end
+
+  opts.on("-h", "--help", "this help info") do
+    puts opts
+    exit
+  end
+end.parse!
+
+mask ||= Theseus::TransparentMask.new(width || 50, height || 50)
+width ||= mask.width
+height ||= mask.height
+maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness)
+
+if animate
+  step = 0
+  maze.generate! do
+    f = "%s-%04d.png" % [output, step]
+    step += 1
+    File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
+    print "."
+  end
+  puts "done"
+else
+  maze.generate!
+  File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
+end
