@@ -9,6 +9,9 @@ module Theseus
     EAST  = 0x04
     WEST  = 0x08
 
+    PRIMARY = 0x000F
+    UNDER   = 0xF000
+
     DIRECTIONS = [NORTH, SOUTH, EAST, WEST]
 
     attr_reader :width, :height
@@ -24,6 +27,7 @@ module Theseus
       @height = height
       @randomness = options[:randomness] || 100
       @mask = options[:mask] || TransparentMask.new
+      @weave = options[:weave] || 0
       @cells = Array.new(height) { Array.new(width, 0) }
       loop do
         @x = rand(@width)
@@ -85,13 +89,23 @@ module Theseus
       end
     end
 
+    def in_bounds?(x, y)
+      x >= 0 && y >= 0 && x < @width && y < @height && @mask[x, y]
+    end
+
     def next_direction
       loop do
         direction = @tries.pop
         nx, ny = @x + dx(direction), @y + dy(direction)
 
-        if nx >= 0 && ny >= 0 && nx < @width && ny < @height && @cells[ny][nx] == 0 && @mask[nx, ny]
-          return direction
+        if in_bounds?(nx, ny) && (@cells[@y][@x] & direction == 0)
+          if @cells[ny][nx] == 0
+            return direction
+          elsif @weave > 0 && (@weave == 100 || rand(100) < @weave)
+            # see if we can weave over/under the cell at (nx,ny)
+            nx2, ny2 = nx + dx(direction), ny + dy(direction)
+            return direction if in_bounds?(nx2, ny2) && @cells[ny2][nx2] == 0
+          end
         end
 
         while @tries.empty?
@@ -112,6 +126,20 @@ module Theseus
       nx, ny = @x + dx(direction), @y + dy(direction)
 
       @cells[@y][@x] |= direction
+
+      # if (nx,ny) is already visited, then we're weaving (moving either over
+      # or under the existing passage).
+      if @cells[ny][nx] != 0
+        if rand(2) == 0 # move under existing passage
+          @cells[ny][nx] |= (direction | opposite(direction)) << 4
+        else # move over existing passage
+          @cells[ny][nx] <<= 4
+          @cells[ny][nx] |= direction | opposite(direction)
+        end
+
+        nx, ny = nx + dx(direction), ny + dy(direction)
+      end
+
       @cells[ny][nx] |= opposite(direction)
 
       @stack.push([@x, @y, @tries])
@@ -217,7 +245,7 @@ module Theseus
       @cells.each do |row|
         r1, r2 = "", ""
         row.each do |cell|
-          sprite = sprites[cell]
+          sprite = sprites[cell & PRIMARY]
           r1 << sprite[0]
           r2 << sprite[1]
         end
@@ -239,7 +267,7 @@ module Theseus
       str = ""
       @cells.each do |row|
         row.each do |cell|
-          str << UTF8_LINES[cell]
+          str << UTF8_LINES[cell & PRIMARY]
         end
         str << "\n"
       end

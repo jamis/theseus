@@ -59,28 +59,41 @@ module Theseus
 
         canvas.fill_rect(x + @d1, y + @d1, x + @d2, y + @d2, @options[:cell_color])
 
-        draw_vertical(canvas, x, y, 1, cell & Theseus::Maze::NORTH)
-        draw_vertical(canvas, x, y + @options[:cell_size], -1, cell & Theseus::Maze::SOUTH)
-        draw_horizontal(canvas, x, y, 1, cell & Theseus::Maze::WEST)
-        draw_horizontal(canvas, x + @options[:cell_size], y, -1, cell & Theseus::Maze::EAST)
+        north = cell & Theseus::Maze::NORTH == Theseus::Maze::NORTH
+        north_under = (cell >> 4) & Theseus::Maze::NORTH == Theseus::Maze::NORTH
+        south = cell & Theseus::Maze::SOUTH == Theseus::Maze::SOUTH
+        south_under = (cell >> 4) & Theseus::Maze::SOUTH == Theseus::Maze::SOUTH
+        west = cell & Theseus::Maze::WEST == Theseus::Maze::WEST
+        west_under = (cell >> 4) & Theseus::Maze::WEST == Theseus::Maze::WEST
+        east = cell & Theseus::Maze::EAST == Theseus::Maze::EAST
+        east_under = (cell >> 4) & Theseus::Maze::EAST == Theseus::Maze::EAST
+
+        draw_vertical(canvas, x, y, 1, north || north_under, !north || north_under)
+        draw_vertical(canvas, x, y + @options[:cell_size], -1, south || south_under, !south || south_under)
+        draw_horizontal(canvas, x, y, 1, west || west_under, !west || west_under)
+        draw_horizontal(canvas, x + @options[:cell_size], y, -1, east || east_under, !east || east_under)
       end
 
-      def draw_vertical(canvas, x, y, direction, cell)
-        if cell != 0
+      def draw_vertical(canvas, x, y, direction, corridor, wall)
+        if corridor
           canvas.fill_rect(x + @d1, y, x + @d2, y + @d1 * direction, @options[:cell_color])
           canvas.fill_rect(x + @d1 - @w1, y - (@w1 * direction), x + @d1 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
           canvas.fill_rect(x + @d2 - @w2, y - (@w1 * direction), x + @d2 + @w1, y + (@d1 + @w2) * direction, @options[:wall_color])
-        else
+        end
+
+        if wall
           canvas.fill_rect(x + @d1 - @w1, y + (@d1 - @w1) * direction, x + @d2 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
         end
       end
 
-      def draw_horizontal(canvas, x, y, direction, cell)
-        if cell != 0
+      def draw_horizontal(canvas, x, y, direction, corridor, wall)
+        if corridor
           canvas.fill_rect(x, y + @d1, x + @d1 * direction, y + @d2, @options[:cell_color])
           canvas.fill_rect(x - (@w1 * direction), y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d1 + @w2, @options[:wall_color])
           canvas.fill_rect(x - (@w1 * direction), y + @d2 - @w2, x + (@d1 + @w2) * direction, y + @d2 + @w1, @options[:wall_color])
-        else
+        end
+
+        if wall
           canvas.fill_rect(x + (@d1 - @w1) * direction, y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d2 + @w2, @options[:wall_color])
         end
       end
