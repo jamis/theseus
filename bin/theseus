@@ -8,6 +8,7 @@ animate = false
 output = "maze"
 mask = width = height = nil
 randomness = 50
+sparse = 0
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 
@@ -56,6 +57,10 @@ OptionParser.new do |opts|
     randomness = r
   end
 
+  opts.on("-S", "--sparse N", Integer, "how sparse to make the maze (default #{sparse})") do |s|
+    sparse = s
+  end
+
   opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
     srand(s)
   end
@@ -65,6 +70,10 @@ OptionParser.new do |opts|
     exit
   end
 end.parse!
+
+if sparse > 0 && animate
+  abort "sparse cannot be used for animated mazes"
+end
 
 mask ||= Theseus::TransparentMask.new(width || 50, height || 50)
 width ||= mask.width
@@ -82,5 +91,6 @@ if animate
   puts "done"
 else
   maze.generate!
+  sparse.times { maze.sparsify! }
   File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
 end
