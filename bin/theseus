@@ -21,6 +21,14 @@ OptionParser.new do |opts|
     png_opts[:background] = c
   end
 
+  opts.on("-C", "--cellcolor COLOR", "rgba hex cell color for maze (default %08X)" % png_opts[:cell_color]) do |c|
+    png_opts[:cell_color] = c
+  end
+
+  opts.on("-L", "--wallcolor COLOR", "rgba hex wall color for maze (default %08X)" % png_opts[:wall_color]) do |c|
+    png_opts[:wall_color] = c
+  end
+
   opts.on("-c", "--cell N", Integer, "size of each cell (default #{png_opts[:cell_size]})") do |c|
     png_opts[:cell_size] = c
   end
