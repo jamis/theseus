@@ -161,7 +161,8 @@ module Theseus
 
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
-          if cell == NORTH || cell == SOUTH || cell == EAST || cell == WEST
+          raw = cell & PRIMARY
+          if raw == NORTH || raw == SOUTH || raw == EAST || raw == WEST
             dead_ends << [x, y]
           end
         end
@@ -169,9 +170,23 @@ module Theseus
 
       dead_ends.each do |(x, y)|
         cell = @cells[y][x]
-        nx, ny = x + dx(cell), y + dy(cell)
-        @cells[y][x] = 0
-        @cells[ny][nx] &= ~opposite(cell)
+        direction = cell & PRIMARY
+        nx, ny = x + dx(direction), y + dy(direction)
+
+        # if the cell includes UNDER codes, shifting it all 4 bits to the right
+        # will convert those UNDER codes to PRIMARY codes. Otherwise, it will
+        # simply zero the cell, resulting in a blank spot.
+        @cells[y][x] >>= 4
+
+        # if it's a weave cell (that moves over or under another corridor),
+        # nix it and move back one more, so we don't wind up with dead-ends
+        # underneath another corridor.
+        if @cells[ny][nx] & (opposite(direction) << 4) != 0
+          @cells[ny][nx] &= ~((direction | opposite(direction)) << 4)
+          nx, ny = nx + dx(direction), ny + dy(direction)
+        end
+
+        @cells[ny][nx] &= ~opposite(direction)
       end
     end
 
