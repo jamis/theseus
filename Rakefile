@@ -1,0 +1,20 @@
+require 'rake'
+require 'rake/gempackagetask'
+
+spec = Gem::Specification.new do |s|
+    s.platform = Gem::Platform::RUBY
+    s.summary = "Maze generator for Ruby"
+    s.name = 'theseus'
+    s.version = "1.0.0"
+    s.files = FileList["README.markdown", "Rakefile", "lib/**/*.rb", "bin/*"].to_a
+    s.executables << "theseus"
+    s.description = "Theseus is a library for building random mazes."
+    s.author = "Jamis Buck"
+    s.email = "jamis@jamisbuck.org"
+    s.homepage = "http://github.com/jamis/theseus"
+end
+
+Rake::GemPackageTask.new(spec) do |pkg|
+  pkg.need_zip = true
+  pkg.need_tar = true
+end
