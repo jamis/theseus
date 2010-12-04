@@ -104,7 +104,7 @@ end.parse!
 
 if animate
   abort "sparse cannot be used for animated mazes" if sparse > 0
-  abort "cannot specify both solve and animate" if solve
+  abort "cannot specify both solve and animate" if png_opts[:solution]
 
   png_opts[:background] = ChunkyPNG::Color.from_hex(png_opts[:background]) unless Fixnum === png_opts[:background]
 

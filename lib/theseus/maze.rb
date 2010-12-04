@@ -110,10 +110,10 @@ module Theseus
         direction = @tries.pop
         nx, ny = @x + dx(direction), @y + dy(direction)
 
-        if in_bounds?(nx, ny) && (@cells[@y][@x] & direction == 0)
+        if in_bounds?(nx, ny) && (@cells[@y][@x] & (direction | (direction << 4)) == 0)
           if @cells[ny][nx] == 0
             return direction
-          elsif !DIRECTIONS.include?(@cells[nx][ny]) && @weave > 0 && (@weave == 100 || rand(100) < @weave)
+          elsif !DIRECTIONS.include?(@cells[ny][nx]) && @weave > 0 && (@weave == 100 || rand(100) < @weave)
             # see if we can weave over/under the cell at (nx,ny)
             nx2, ny2 = nx + dx(direction), ny + dy(direction)
             return direction if in_bounds?(nx2, ny2) && @cells[ny2][nx2] == 0

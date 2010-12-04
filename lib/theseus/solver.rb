@@ -9,9 +9,15 @@ module Theseus
       @stack = []
     end
 
+    def each
+      while step = next_step
+        yield step
+      end
+    end
+
     def solution
       solution = []
-      while step = next_step
+      each do |step|
         if step == :backtrack
           solution.pop
         else
@@ -19,6 +25,36 @@ module Theseus
         end
       end
       solution
+    end
+
+    def solution_grid
+      relationship = lambda do |a, b|
+        if a[0] < b[0]
+          Maze::EAST
+        elsif a[0] > b[0]
+          Maze::WEST
+        elsif a[1] < b[1]
+          Maze::SOUTH
+        elsif a[1] > b[1]
+          Maze::NORTH
+        end
+      end
+
+      grid = Array.new(@maze.width) { Array.new(@maze.height, 0) }
+      previous = @maze.entrance
+      solution.each do |step|
+        if (direction = relationship[previous, step])
+          grid[previous[0]][previous[1]] |= direction if @maze.in_bounds?(previous[0], previous[1])
+          grid[step[0]][step[1]] |= @maze.opposite(direction)
+        end
+        previous = step
+      end
+      
+      if (direction = relationship[previous, @maze.exit])
+        grid[previous[0]][previous[1]] |= direction
+      end
+
+      return grid
     end
 
     def next_step
