@@ -8,6 +8,8 @@ spec = Gem::Specification.new do |s|
     s.version = "1.0.0"
     s.files = FileList["README.markdown", "Rakefile", "lib/**/*.rb", "bin/*"].to_a
     s.executables << "theseus"
+    s.add_dependency "chunky_png", "~> 0.11.1"
+    s.requirements << "Ruby 1.9"
     s.description = "Theseus is a library for building random mazes."
     s.author = "Jamis Buck"
     s.email = "jamis@jamisbuck.org"
