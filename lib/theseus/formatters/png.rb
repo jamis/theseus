@@ -7,13 +7,13 @@ module Theseus
   module Formatters
     class PNG
       DEFAULTS = {
-        :cell_size      => 5,
+        :cell_size      => 10,
         :wall_width     => 1,
         :wall_color     => 0x000000FF,
         :cell_color     => 0xFFFFFFFF,
         :solution_color => 0xFFAFAFFF,
         :background     => 0x00000000,
-        :outer_padding  => 0,
+        :outer_padding  => 2,
         :cell_padding   => 1,
         :solution       => false
       }
@@ -65,10 +65,10 @@ module Theseus
         canvas.line(x0, y0, x1, y1, @options[:solution_color])
       end
 
-      ANY_NORTH = Maze::NORTH | (Maze::NORTH << 4)
-      ANY_SOUTH = Maze::SOUTH | (Maze::SOUTH << 4)
-      ANY_WEST = Maze::WEST | (Maze::WEST << 4)
-      ANY_EAST = Maze::EAST | (Maze::EAST << 4)
+      ANY_NORTH = Maze::NORTH | (Maze::NORTH << Maze::UNDER_SHIFT)
+      ANY_SOUTH = Maze::SOUTH | (Maze::SOUTH << Maze::UNDER_SHIFT)
+      ANY_WEST = Maze::WEST | (Maze::WEST << Maze::UNDER_SHIFT)
+      ANY_EAST = Maze::EAST | (Maze::EAST << Maze::UNDER_SHIFT)
 
       def draw_cell(canvas, x, y, cell, solution)
         return if cell == 0
@@ -78,13 +78,13 @@ module Theseus
         canvas.fill_rect(x + @d1, y + @d1, x + @d2, y + @d2, @options[color])
 
         north = cell & Maze::NORTH == Maze::NORTH
-        north_under = (cell >> 4) & Maze::NORTH == Maze::NORTH
+        north_under = (cell >> Maze::UNDER_SHIFT) & Maze::NORTH == Maze::NORTH
         south = cell & Maze::SOUTH == Maze::SOUTH
-        south_under = (cell >> 4) & Maze::SOUTH == Maze::SOUTH
+        south_under = (cell >> Maze::UNDER_SHIFT) & Maze::SOUTH == Maze::SOUTH
         west = cell & Maze::WEST == Maze::WEST
-        west_under = (cell >> 4) & Maze::WEST == Maze::WEST
+        west_under = (cell >> Maze::UNDER_SHIFT) & Maze::WEST == Maze::WEST
         east = cell & Maze::EAST == Maze::EAST
-        east_under = (cell >> 4) & Maze::EAST == Maze::EAST
+        east_under = (cell >> Maze::UNDER_SHIFT) & Maze::EAST == Maze::EAST
 
         draw_vertical(canvas, x, y, 1, north || north_under, !north || north_under, solution & ANY_NORTH != 0 ? :solution_color : :cell_color) 
         draw_vertical(canvas, x, y + @options[:cell_size], -1, south || south_under, !south || south_under, solution & ANY_SOUTH != 0 ? :solution_color : :cell_color)

@@ -73,7 +73,7 @@ module Theseus
             @stack.pop
             return :backtrack
           elsif (cell & try) != 0
-            dir = (try & Maze::PRIMARY != 0) ? try : (try >> 4)
+            dir = (try & Maze::PRIMARY != 0) ? try : (try >> Maze::UNDER_SHIFT)
             nx, ny = x + @maze.dx(dir), y + @maze.dy(dir)
             # might be out of bounds, due to the entrance/exit passages
             next unless @maze.in_bounds?(nx, ny)
@@ -81,8 +81,8 @@ module Theseus
             ncell = @maze[nx, ny]
             p = [nx, ny]
 
-            if ncell & (dir << 4) != 0 # underpass
-              directions = [dir << 4]
+            if ncell & (dir << Maze::UNDER_SHIFT) != 0 # underpass
+              directions = [dir << Maze::UNDER_SHIFT]
             else
               directions = Maze::DIRECTIONS - [@maze.opposite(dir)]
             end

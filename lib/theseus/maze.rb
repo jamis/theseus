@@ -13,6 +13,8 @@ module Theseus
     PRIMARY = 0x000F
     UNDER   = 0xF000
 
+    UNDER_SHIFT = 12
+
     DIRECTIONS = [NORTH, SOUTH, EAST, WEST]
 
     attr_reader :width, :height
@@ -32,10 +34,25 @@ module Theseus
       @randomness = options[:randomness] || 100
       @mask = options[:mask] || TransparentMask.new
       @weave = options[:weave] || 0
+      @symmetry = options[:symmetry]
+
+      if @symmetry == :radial && @width != @height
+        raise ArgumentError, "radial symmetrial is only possible for mazes where width == height"
+      end
+
+      @available_width = case @symmetry
+        when :none, :y then @width
+        when :x, :xy, :radial then (@width/2.0).ceil
+        end
+      @available_height = case @symmetry
+        when :none, :x then @height
+        when :y, :xy, :radial then (@height/2.0).ceil
+        end
+
       @cells = Array.new(height) { Array.new(width, 0) }
       loop do
-        @x = rand(@width)
-        @y = rand(@height)
+        @x = rand(@available_width)
+        @y = rand(@available_height)
         break if @mask[@x, @y]
       end
       @tries = new_tries
@@ -84,25 +101,74 @@ module Theseus
     end
 
     def opposite(direction)
-      case direction
-      when NORTH then SOUTH
-      when SOUTH then NORTH
-      when EAST  then WEST
-      when WEST  then EAST
+      if direction & UNDER != 0
+        opposite(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when NORTH then SOUTH
+        when SOUTH then NORTH
+        when EAST  then WEST
+        when WEST  then EAST
+        end
       end
     end
 
-    def d2s(direction)
-      case direction
-      when NORTH then "north"
-      when SOUTH then "south"
-      when EAST  then "west"
-      when WEST  then "east"
+    def hmirror(direction)
+      if direction & UNDER != 0
+        hmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when EAST then WEST
+        when WEST then EAST
+        else direction
+        end
       end
     end
 
-    def in_bounds?(x, y)
-      x >= 0 && y >= 0 && x < @width && y < @height && @mask[x, y]
+    def vmirror(direction)
+      if direction & UNDER != 0
+        vmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when NORTH then SOUTH
+        when SOUTH then NORTH
+        else direction
+        end
+      end
+    end
+
+    def clockwise(direction)
+      if direction & UNDER != 0
+        clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when NORTH then EAST
+        when EAST  then SOUTH
+        when SOUTH then WEST
+        when WEST  then NORTH
+        end
+      end
+    end
+
+    def counter_clockwise(direction)
+      if direction & UNDER != 0
+        counter_clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when NORTH then WEST
+        when WEST  then SOUTH
+        when SOUTH then EAST
+        when EAST  then NORTH
+        end
+      end
+    end
+
+    def in_bounds?(x, y, width=@width, height=@height)
+      x >= 0 && y >= 0 && x < width && y < height && @mask[x, y]
+    end
+
+    def in_tight_bounds?(x, y)
+      in_bounds?(x, y, @available_width, @available_height)
     end
 
     def next_direction
@@ -110,25 +176,122 @@ module Theseus
         direction = @tries.pop
         nx, ny = @x + dx(direction), @y + dy(direction)
 
-        if in_bounds?(nx, ny) && (@cells[@y][@x] & (direction | (direction << 4)) == 0)
+        if in_tight_bounds?(nx, ny) && (@cells[@y][@x] & (direction | (direction << UNDER_SHIFT)) == 0)
           if @cells[ny][nx] == 0
             return direction
           elsif !DIRECTIONS.include?(@cells[ny][nx]) && @weave > 0 && (@weave == 100 || rand(100) < @weave)
             # see if we can weave over/under the cell at (nx,ny)
             nx2, ny2 = nx + dx(direction), ny + dy(direction)
-            return direction if in_bounds?(nx2, ny2) && @cells[ny2][nx2] == 0
+            return direction if in_tight_bounds?(nx2, ny2) && @cells[ny2][nx2] == 0
           end
         end
 
         while @tries.empty?
           if @stack.empty?
-            add_opening_from(@entrance)
-            add_opening_from(@exit)
-            @generated = true
+            finish!
             return nil
           else
             @x, @y, @tries = @stack.pop
           end
+        end
+      end
+    end
+
+    def finish!
+      # for symmetrical mazes, if the size of the maze in the direction of reflection is
+      # even, then we have two distinct halves that need to be joined in order for the
+      # maze to be fully connected.
+
+      connector = lambda do |x, y, ix, iy, dir|
+        start_x, start_y = x, y
+        while @cells[y][x] == 0
+          y = (y + iy) % @available_height
+          x = (x + ix) % @available_width
+          break if start_x == x || start_y == y
+        end
+
+        if @cells[y][x] == 0
+          warn "maze cannot be fully connected"
+          nil
+        else
+          @cells[y][x] |= dir
+          @cells[y+dy(dir)][x+dx(dir)] |= opposite(dir)
+          [x,y]
+        end
+      end
+
+      even = lambda { |x| x % 2 == 0 }
+
+      case @symmetry
+        when :x then
+          connector[@available_width-1, rand(@available_height), 0, 1, EAST] if even[@width]
+        when :y then
+          connector[rand(@available_width), @available_height-1, 1, 0, SOUTH] if even[@height]
+        when :xy then
+          if even[@width]
+            x, y = connector[@available_width-1, rand(@available_height), 0, 1, EAST]
+            @cells[@height-y-1][x] |= EAST
+            @cells[@height-y-1][x+1] |= WEST
+          end
+
+          if even[@height]
+            x, y = connector[rand(@available_width), @available_height-1, 1, 0, SOUTH]
+            @cells[y][@width-x-1] |= SOUTH
+            @cells[y+1][@width-x-1] |= NORTH
+          end
+        when :radial then
+          if even[@width]
+            @cells[@available_height-1][@available_width-1] |= EAST | SOUTH
+            @cells[@available_height-1][@available_width] |= WEST | SOUTH
+            @cells[@available_height][@available_width-1] |= EAST | NORTH
+            @cells[@available_height][@available_width] |= WEST | NORTH
+          end
+      end
+
+      add_opening_from(@entrance)
+      add_opening_from(@exit)
+      @generated = true
+    end
+
+    def apply_move_at(x, y, direction)
+      if direction == :under
+        @cells[y][x] <<= UNDER_SHIFT
+      else
+        @cells[y][x] |= direction
+      end
+
+      case @symmetry
+      when :x then
+        if direction == :under
+          @cells[y][@width - x - 1] <<= UNDER_SHIFT
+        else
+          @cells[y][@width - x - 1] |= hmirror(direction)
+        end
+      when :y then
+        if direction == :under
+          @cells[@height - y - 1][x] <<= UNDER_SHIFT
+        else
+          @cells[@height - y - 1][x] |= vmirror(direction)
+        end
+      when :xy then
+        if direction == :under
+          @cells[y][@width - x - 1] <<= UNDER_SHIFT
+          @cells[@height - y - 1][x] <<= UNDER_SHIFT
+          @cells[@height - y - 1][@width - x - 1] <<= UNDER_SHIFT
+        else
+          @cells[y][@width - x - 1] |= hmirror(direction)
+          @cells[@height - y - 1][x] |= vmirror(direction)
+          @cells[@height - y - 1][@width - x - 1] |= opposite(direction)
+        end
+      when :radial then
+        if direction == :under
+          @cells[@height - x - 1][y] <<= UNDER_SHIFT
+          @cells[x][@width - y - 1] <<= UNDER_SHIFT
+          @cells[@height - y - 1][@width - x - 1] <<= UNDER_SHIFT
+        else
+          @cells[@height - x - 1][y] |= counter_clockwise(direction)
+          @cells[x][@width - y - 1] |= clockwise(direction)
+          @cells[@height - y - 1][@width - x - 1] |= opposite(direction)
         end
       end
     end
@@ -139,22 +302,24 @@ module Theseus
       direction = next_direction or return nil
       nx, ny = @x + dx(direction), @y + dy(direction)
 
-      @cells[@y][@x] |= direction
+      apply_move_at(@x, @y, direction)
 
       # if (nx,ny) is already visited, then we're weaving (moving either over
       # or under the existing passage).
       if @cells[ny][nx] != 0
         if rand(2) == 0 # move under existing passage
-          @cells[ny][nx] |= (direction | opposite(direction)) << 4
+          apply_move_at(nx, ny, direction << UNDER_SHIFT)
+          apply_move_at(nx, ny, opposite(direction) << UNDER_SHIFT)
         else # move over existing passage
-          @cells[ny][nx] <<= 4
-          @cells[ny][nx] |= direction | opposite(direction)
+          apply_move_at(nx, ny, :under)
+          apply_move_at(nx, ny, direction)
+          apply_move_at(nx, ny, opposite(direction))
         end
 
         nx, ny = nx + dx(direction), ny + dy(direction)
       end
 
-      @cells[ny][nx] |= opposite(direction)
+      apply_move_at(nx, ny, opposite(direction))
 
       @stack.push([@x, @y, @tries])
       @tries = new_tries
@@ -187,16 +352,16 @@ module Theseus
         direction = cell & PRIMARY
         nx, ny = x + dx(direction), y + dy(direction)
 
-        # if the cell includes UNDER codes, shifting it all 4 bits to the right
+        # if the cell includes UNDER codes, shifting it all UNDER_SHIFT bits to the right
         # will convert those UNDER codes to PRIMARY codes. Otherwise, it will
         # simply zero the cell, resulting in a blank spot.
-        @cells[y][x] >>= 4
+        @cells[y][x] >>= UNDER_SHIFT
 
         # if it's a weave cell (that moves over or under another corridor),
         # nix it and move back one more, so we don't wind up with dead-ends
         # underneath another corridor.
-        if @cells[ny][nx] & (opposite(direction) << 4) != 0
-          @cells[ny][nx] &= ~((direction | opposite(direction)) << 4)
+        if @cells[ny][nx] & (opposite(direction) << UNDER_SHIFT) != 0
+          @cells[ny][nx] &= ~((direction | opposite(direction)) << UNDER_SHIFT)
           nx, ny = nx + dx(direction), ny + dy(direction)
         end
 

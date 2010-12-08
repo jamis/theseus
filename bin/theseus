@@ -12,6 +12,7 @@ sparse = 0
 weave = false
 enter_at = nil
 exit_at = nil
+symmetry = :none
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 
@@ -60,7 +61,7 @@ OptionParser.new do |opts|
     output = f
   end
 
-  opts.on("-w", "--width N", Integer, "width of the maze") do |w|
+  opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
     width = w
   end
 
@@ -68,7 +69,7 @@ OptionParser.new do |opts|
     weave = v
   end
 
-  opts.on("-H", "--height N", Integer, "height of the maze") do |h|
+  opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
     height = h
   end
 
@@ -96,6 +97,10 @@ OptionParser.new do |opts|
     png_opts[:solution] = s
   end
 
+  opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{symmetry}')") do |s|
+    symmetry = s.to_sym
+  end
+
   opts.on("-h", "--help", "this help info") do
     puts opts
     exit
@@ -114,10 +119,10 @@ if animate
   end
 end
 
-mask ||= Theseus::TransparentMask.new(width || 50, height || 50)
+mask ||= Theseus::TransparentMask.new(width || 20, height || 20)
 width ||= mask.width
 height ||= mask.height
-maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness, weave: weave, entrance: enter_at, exit: exit_at)
+maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness, weave: weave, entrance: enter_at, exit: exit_at, symmetry: symmetry)
 
 if animate
   step = 0
@@ -127,9 +132,15 @@ if animate
     File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
     print "."
   end
-  puts "done"
+
+  f = "%s-%04d.png" % [output, step]
+  File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
+  puts
+
+  puts "done, %d frames written to %s-*.png" % [step+1, output]
 else
   maze.generate!
   sparse.times { maze.sparsify! }
   File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
+  puts "maze written to #{output}.png"
 end
