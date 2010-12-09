@@ -4,6 +4,7 @@ module Theseus
   class Solver
     def initialize(maze, a=maze.start, b=maze.finish)
       @maze = maze
+      @visits = Array.new(@maze.height) { Array.new(@maze.width, false) }
       @a = a
       @b = b
       @stack = []
@@ -70,14 +71,17 @@ module Theseus
           try = @stack.last[1].pop
 
           if try.nil?
-            @stack.pop
+            spot = @stack.pop
+            x, y = spot[0]
+            @visits[y][x] = false
             return :backtrack
           elsif (cell & try) != 0
             dir = (try & Maze::PRIMARY != 0) ? try : (try >> Maze::UNDER_SHIFT)
             nx, ny = x + @maze.dx(dir), y + @maze.dy(dir)
             # might be out of bounds, due to the entrance/exit passages
-            next unless @maze.in_bounds?(nx, ny)
+            next unless @maze.in_bounds?(nx, ny) && !@visits[ny][nx]
 
+            @visits[ny][nx] = true
             ncell = @maze[nx, ny]
             p = [nx, ny]
 
