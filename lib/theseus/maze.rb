@@ -418,10 +418,10 @@ module Theseus
     def to_unicursal(options={})
       unicursal = Maze.new(@width*2, @height*2, options.merge(prebuilt: true))
 
-      set = lambda do |x, y, direction|
+      set = lambda do |x, y, direction, *recip|
         nx, ny = x + dx(direction), y + dy(direction)
         unicursal[x,y] |= direction
-        unicursal[nx, ny] |= opposite(direction)
+        unicursal[nx, ny] |= opposite(direction) if recip[0]
       end
 
       @cells.each_with_index do |row, y|
@@ -432,33 +432,33 @@ module Theseus
           if cell & NORTH != 0
             set[x2, y2, NORTH]
             set[x2+1, y2, NORTH]
-            set[x2, y2+1, NORTH] if cell & WEST == 0
-            set[x2+1, y2+1, NORTH] if cell & EAST == 0
-            set[x2, y2+1, EAST] if (cell & PRIMARY) == NORTH
+            set[x2, y2+1, NORTH, true] if cell & WEST == 0
+            set[x2+1, y2+1, NORTH, true] if cell & EAST == 0
+            set[x2, y2+1, EAST, true] if (cell & PRIMARY) == NORTH
           end
 
           if cell & SOUTH != 0
             set[x2, y2+1, SOUTH]
             set[x2+1, y2+1, SOUTH]
-            set[x2, y2, SOUTH] if cell & WEST == 0
-            set[x2+1, y2, SOUTH] if cell & EAST == 0
-            set[x2, y2, EAST] if (cell & PRIMARY) == SOUTH
+            set[x2, y2, SOUTH, true] if cell & WEST == 0
+            set[x2+1, y2, SOUTH, true] if cell & EAST == 0
+            set[x2, y2, EAST, true] if (cell & PRIMARY) == SOUTH
           end
 
           if cell & WEST != 0
             set[x2, y2, WEST]
             set[x2, y2+1, WEST]
-            set[x2+1, y2, WEST] if cell & NORTH == 0
-            set[x2+1, y2+1, WEST] if cell & SOUTH == 0
-            set[x2+1, y2, SOUTH] if (cell & PRIMARY) == WEST
+            set[x2+1, y2, WEST, true] if cell & NORTH == 0
+            set[x2+1, y2+1, WEST, true] if cell & SOUTH == 0
+            set[x2+1, y2, SOUTH, true] if (cell & PRIMARY) == WEST
           end
 
           if cell & EAST != 0
             set[x2+1, y2, EAST]
             set[x2+1, y2+1, EAST]
-            set[x2, y2, EAST] if cell & NORTH == 0
-            set[x2, y2+1, EAST] if cell & SOUTH == 0
-            set[x2, y2, SOUTH] if (cell & PRIMARY) == EAST
+            set[x2, y2, EAST, true] if cell & NORTH == 0
+            set[x2, y2+1, EAST, true] if cell & SOUTH == 0
+            set[x2, y2, SOUTH, true] if (cell & PRIMARY) == EAST
           end
 
           if cell & (NORTH << UNDER_SHIFT) != 0
