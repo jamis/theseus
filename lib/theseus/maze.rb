@@ -33,8 +33,9 @@ module Theseus
       @exit = options[:exit] || [@width,@height-1]
       @randomness = options[:randomness] || 100
       @mask = options[:mask] || TransparentMask.new
-      @weave = options[:weave] || 0
+      @weave = options[:weave].to_i
       @symmetry = options[:symmetry]
+      @braid = options[:braid].to_i
 
       if @symmetry == :radial && @width != @height
         raise ArgumentError, "radial symmetrial is only possible for mazes where width == height"
@@ -250,7 +251,20 @@ module Theseus
 
       add_opening_from(@entrance)
       add_opening_from(@exit)
-      @generated = true
+
+      @deadends = deadends_to_braid
+      @generated = @deadends.empty?
+    end
+
+    def deadends_to_braid
+      return [] if @braid.zero?
+
+      ends = dead_ends
+
+      count = ends.length * @braid / 100
+      count = 1 if count < 1
+
+      ends.sort_by { rand }[0,count]
     end
 
     def apply_move_at(x, y, direction)
@@ -296,10 +310,35 @@ module Theseus
       end
     end
 
-    def step
-      return nil if @generated
+    # TODO: look for the direction that results in the longest loop.
+    # might be kind of spendy, but worth trying, at least.
+    def braid(x, y)
+      return unless dead_end?(@cells[y][x])
+      [opposite(@cells[y][x]), *new_tries].each do |try|
+        next if try == @cells[y][x]
+        nx, ny = x + dx(try), y + dy(try)
+        if in_bounds?(nx, ny)
+          opp = opposite(try)
+          next if @cells[ny][nx] & (opp << UNDER_SHIFT) != 0
+          @cells[y][x] |= try
+          @cells[ny][nx] |= opp
+          return
+        end
+      end
+    end
 
-      direction = next_direction or return nil
+    def step
+      return false if @generated
+
+      if @deadends && @deadends.any?
+        dead_end = @deadends.pop
+        braid(dead_end[0], dead_end[1])
+        
+        @generated = @deadends.empty?
+        return !@generated
+      end
+
+      direction = next_direction or return !@generated
       nx, ny = @x + dx(direction), @y + dy(direction)
 
       apply_move_at(@x, @y, direction)
@@ -326,7 +365,7 @@ module Theseus
       @tries.push direction unless rand(100) < @randomness
       @x, @y = nx, ny
 
-      return [nx, ny]
+      return true
     end
 
     def generate!
@@ -335,18 +374,24 @@ module Theseus
       end
     end
 
-    def sparsify!
+    def dead_end?(cell)
+      raw = cell & PRIMARY
+      raw == NORTH || raw == SOUTH || raw == EAST || raw == WEST
+    end
+
+    def dead_ends
       dead_ends = []
 
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
-          raw = cell & PRIMARY
-          if raw == NORTH || raw == SOUTH || raw == EAST || raw == WEST
-            dead_ends << [x, y]
-          end
+          dead_ends << [x, y] if dead_end?(cell)
         end
       end
 
+      dead_ends
+    end
+
+    def sparsify!
       dead_ends.each do |(x, y)|
         cell = @cells[y][x]
         direction = cell & PRIMARY

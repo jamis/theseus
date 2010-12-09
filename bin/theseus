@@ -6,21 +6,15 @@ require 'theseus/formatters/png'
 
 animate = false
 output = "maze"
-mask = width = height = nil
-randomness = 50
+width = height = nil
 sparse = 0
-weave = false
-enter_at = nil
-exit_at = nil
-symmetry = :none
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
+maze_opts = { mask: nil,
+  randomness: 50, weave: 0, symmetry: :none, braid: 0,
+  entrance: nil, exit: nil }
 
 OptionParser.new do |opts|
-  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
-    mask = Theseus::Mask.from_png(m)
-  end
-
   opts.on("-B", "--background COLOR", "rgba hex background color for maze (default %08X)" % png_opts[:background]) do |c|
     png_opts[:background] = c
   end
@@ -61,44 +55,52 @@ OptionParser.new do |opts|
     output = f
   end
 
-  opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
-    width = w
-  end
-
-  opts.on("-e", "--weave N", Integer, "0-100, chance of a passage to go over/under another (default 0)") do |v|
-    weave = v
-  end
-
-  opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
-    height = h
-  end
-
-  opts.on("-r", "--random N", Integer, "0-100, randomness of maze (default #{randomness})") do |r|
-    randomness = r
-  end
-
-  opts.on("-S", "--sparse N", Integer, "how sparse to make the maze (default #{sparse})") do |s|
-    sparse = s
+  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
+    maze_opts[:mask] = Theseus::Mask.from_png(m)
   end
 
   opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
     srand(s)
   end
 
+  opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{maze_opts[:symmetry]}')") do |s|
+    maze_opts[:symmetry] = s.to_sym
+  end
+
+  opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
+    width = w
+  end
+
+  opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
+    height = h
+  end
+
+  opts.on("-e", "--weave N", Integer, "0-100, chance of a passage to go over/under another (default #{maze_opts[:weave]})") do |v|
+    maze_opts[:weave] = v
+  end
+
+  opts.on("-r", "--random N", Integer, "0-100, randomness of maze (default #{maze_opts[:randomness]})") do |r|
+    maze_opts[:randomness] = r
+  end
+
+  opts.on("-S", "--sparse N", Integer, "how sparse to make the maze (default #{sparse})") do |s|
+    sparse = s
+  end
+
+  opts.on("-d", "--braid N", Integer, "0-100, percentage of deadends to remove (default #{maze_opts[:braid]})") do |b|
+    maze_opts[:braid] = b
+  end
+
   opts.on("-E", "--enter [X,Y]", "the entrance of the maze (default -1,0)") do |s|
-    enter_at = s.split(/,/).map { |v| v.to_i }
+    maze_opts[:entrance] = s.split(/,/).map { |v| v.to_i }
   end
 
   opts.on("-X", "--exit [X,Y]", "the exit of the maze (default width,height-1)") do |s|
-    exit_at = s.split(/,/).map { |v| v.to_i }
+    maze_opts[:exit] = s.split(/,/).map { |v| v.to_i }
   end
 
   opts.on("-v", "--[no-]solve", "whether to display the solution of the maze") do |s|
     png_opts[:solution] = s
-  end
-
-  opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{symmetry}')") do |s|
-    symmetry = s.to_sym
   end
 
   opts.on("-h", "--help", "this help info") do
@@ -119,10 +121,10 @@ if animate
   end
 end
 
-mask ||= Theseus::TransparentMask.new(width || 20, height || 20)
-width ||= mask.width
-height ||= mask.height
-maze = Theseus::Maze.new(width, height, mask: mask, randomness: randomness, weave: weave, entrance: enter_at, exit: exit_at, symmetry: symmetry)
+maze_opts[:mask] ||= Theseus::TransparentMask.new(width || 20, height || 20)
+width ||= maze_opts[:mask].width
+height ||= maze_opts[:mask].height
+maze = Theseus::Maze.new(width, height, maze_opts)
 
 if animate
   step = 0
