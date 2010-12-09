@@ -58,7 +58,8 @@ module Theseus
       end
       @tries = new_tries
       @stack = []
-      @generated = false
+
+      @generated = options[:prebuilt]
     end
 
     def new_tries
@@ -412,6 +413,85 @@ module Theseus
 
         @cells[ny][nx] &= ~opposite(direction)
       end
+    end
+
+    def to_unicursal(options={})
+      unicursal = Maze.new(@width*2, @height*2, options.merge(prebuilt: true))
+
+      set = lambda do |x, y, direction|
+        nx, ny = x + dx(direction), y + dy(direction)
+        unicursal[x,y] |= direction
+        unicursal[nx, ny] |= opposite(direction)
+      end
+
+      @cells.each_with_index do |row, y|
+        row.each_with_index do |cell, x|
+          x2 = x * 2
+          y2 = y * 2
+
+          if cell & NORTH != 0
+            set[x2, y2, NORTH]
+            set[x2+1, y2, NORTH]
+            set[x2, y2+1, NORTH] if cell & WEST == 0
+            set[x2+1, y2+1, NORTH] if cell & EAST == 0
+            set[x2, y2+1, EAST] if (cell & PRIMARY) == NORTH
+          end
+
+          if cell & SOUTH != 0
+            set[x2, y2+1, SOUTH]
+            set[x2+1, y2+1, SOUTH]
+            set[x2, y2, SOUTH] if cell & WEST == 0
+            set[x2+1, y2, SOUTH] if cell & EAST == 0
+            set[x2, y2, EAST] if (cell & PRIMARY) == SOUTH
+          end
+
+          if cell & WEST != 0
+            set[x2, y2, WEST]
+            set[x2, y2+1, WEST]
+            set[x2+1, y2, WEST] if cell & NORTH == 0
+            set[x2+1, y2+1, WEST] if cell & SOUTH == 0
+            set[x2+1, y2, SOUTH] if (cell & PRIMARY) == WEST
+          end
+
+          if cell & EAST != 0
+            set[x2+1, y2, EAST]
+            set[x2+1, y2+1, EAST]
+            set[x2, y2, EAST] if cell & NORTH == 0
+            set[x2, y2+1, EAST] if cell & SOUTH == 0
+            set[x2, y2, SOUTH] if (cell & PRIMARY) == EAST
+          end
+
+          if cell & (NORTH << UNDER_SHIFT) != 0
+            unicursal[x2, y2] |= (NORTH | SOUTH) << UNDER_SHIFT
+            unicursal[x2+1, y2] |= (NORTH | SOUTH) << UNDER_SHIFT
+            unicursal[x2, y2+1] |= (NORTH | SOUTH) << UNDER_SHIFT
+            unicursal[x2+1, y2+1] |= (NORTH | SOUTH) << UNDER_SHIFT
+          elsif cell & (WEST << UNDER_SHIFT) != 0
+            unicursal[x2, y2] |= (EAST | WEST) << UNDER_SHIFT
+            unicursal[x2+1, y2] |= (EAST | WEST) << UNDER_SHIFT
+            unicursal[x2, y2+1] |= (EAST | WEST) << UNDER_SHIFT
+            unicursal[x2+1, y2+1] |= (EAST | WEST) << UNDER_SHIFT
+          end
+        end
+      end
+
+      enter_at = unicursal.adjacent_point(unicursal.entrance)
+      exit_at = unicursal.adjacent_point(unicursal.exit)
+
+      if enter_at && exit_at
+        unicursal.add_opening_from(unicursal.entrance)
+        unicursal.add_opening_from(unicursal.exit)
+
+        if enter_at[0] < exit_at[0]
+          unicursal[enter_at[0], enter_at[1]] &= ~EAST
+          unicursal[enter_at[0]+1, enter_at[1]] &= ~WEST
+        elsif enter_at[1] < exit_at[1]
+          unicursal[enter_at[0], enter_at[1]] &= ~SOUTH
+          unicursal[enter_at[0], enter_at[1]+1] &= ~NORTH
+        end
+      end
+
+      return unicursal
     end
 
     def solve(a=start, b=finish)
