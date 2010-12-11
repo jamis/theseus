@@ -1,69 +1,69 @@
-# encoding: UTF-8
-
 require 'theseus/mask'
 require 'theseus/solver'
 
 module Theseus
   class Maze
-    NORTH = 0x01
-    SOUTH = 0x02
-    EAST  = 0x04
-    WEST  = 0x08
+    N  = 0x01
+    S  = 0x02
+    E  = 0x04
+    W  = 0x08
+    NW = 0x10
+    NE = 0x20
+    SW = 0x40
+    SE = 0x80
 
-    PRIMARY = 0x000F
-    UNDER   = 0xF000
+    PRIMARY = 0x00FF
+    UNDER   = 0xFF00
 
-    UNDER_SHIFT = 12
+    UNDER_SHIFT = 8
 
-    DIRECTIONS = [NORTH, SOUTH, EAST, WEST]
+    attr_reader :width
+    attr_reader :height
+    attr_reader :randomness
+    attr_reader :weave
+    attr_reader :braid
+    attr_reader :mask
+    attr_reader :symmetry
+    attr_reader :entrance
+    attr_reader :exit
 
-    attr_reader :width, :height
-    attr_reader :entrance, :exit
-
-    def self.generate(width, height, options={})
+    def self.generate(options={})
       maze = new(width, height, options)
       maze.generate!
       return maze
     end
 
-    def initialize(width, height, options={})
-      @width = width
-      @height = height
-      @entrance = options[:entrance] || [-1,0]
-      @exit = options[:exit] || [@width,@height-1]
+    def initialize(options={})
+      @width = (options[:width] || 10).to_i
+      @height = (options[:height] || 10).to_i
+
+      @symmetry = (options[:symmetry] || :none).to_sym
+      configure_symmetry
+
       @randomness = options[:randomness] || 100
       @mask = options[:mask] || TransparentMask.new
       @weave = options[:weave].to_i
-      @symmetry = options[:symmetry]
       @braid = options[:braid].to_i
 
-      if @symmetry == :radial && @width != @height
-        raise ArgumentError, "radial symmetrial is only possible for mazes where width == height"
-      end
+      @cells = setup_grid or raise "expected #setup_grid to return the new grid"
 
-      @available_width = case @symmetry
-        when :none, :y then @width
-        when :x, :xy, :radial then (@width/2.0).ceil
-        end
-      @available_height = case @symmetry
-        when :none, :x then @height
-        when :y, :xy, :radial then (@height/2.0).ceil
-        end
+      @entrance = options[:entrance] || default_entrance
+      @exit = options[:exit] || default_exit
 
-      @cells = Array.new(height) { Array.new(width, 0) }
       loop do
-        @x = rand(@available_width)
-        @y = rand(@available_height)
-        break if @mask[@x, @y]
+        @y = rand(@cells.length)
+        @x = rand(@cells[@y].length)
+        break if valid?(@x, @y)
       end
-      @tries = new_tries
+
+      @tries = potential_exits_at(@x, @y).sort_by { rand }
       @stack = []
 
       @generated = options[:prebuilt]
     end
 
-    def new_tries
-      DIRECTIONS.sort_by { rand }
+    def generate!
+      yield if block_given? while step
     end
 
     def [](x,y)
@@ -72,260 +72,6 @@ module Theseus
 
     def []=(x,y,value)
       @cells[y][x] = value
-    end
-
-    def generated?
-      @generated
-    end
-
-    def start
-      adjacent_point(@entrance)
-    end
-
-    def finish
-      adjacent_point(@exit)
-    end
-
-    def dx(direction)
-      case direction
-      when EAST then 1
-      when WEST then -1
-      else 0
-      end
-    end
-
-    def dy(direction)
-      case direction
-      when SOUTH then 1
-      when NORTH then -1
-      else 0
-      end
-    end
-
-    def opposite(direction)
-      if direction & UNDER != 0
-        opposite(direction >> UNDER_SHIFT) << UNDER_SHIFT
-      else
-        case direction
-        when NORTH then SOUTH
-        when SOUTH then NORTH
-        when EAST  then WEST
-        when WEST  then EAST
-        end
-      end
-    end
-
-    def hmirror(direction)
-      if direction & UNDER != 0
-        hmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
-      else
-        case direction
-        when EAST then WEST
-        when WEST then EAST
-        else direction
-        end
-      end
-    end
-
-    def vmirror(direction)
-      if direction & UNDER != 0
-        vmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
-      else
-        case direction
-        when NORTH then SOUTH
-        when SOUTH then NORTH
-        else direction
-        end
-      end
-    end
-
-    def clockwise(direction)
-      if direction & UNDER != 0
-        clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
-      else
-        case direction
-        when NORTH then EAST
-        when EAST  then SOUTH
-        when SOUTH then WEST
-        when WEST  then NORTH
-        end
-      end
-    end
-
-    def counter_clockwise(direction)
-      if direction & UNDER != 0
-        counter_clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
-      else
-        case direction
-        when NORTH then WEST
-        when WEST  then SOUTH
-        when SOUTH then EAST
-        when EAST  then NORTH
-        end
-      end
-    end
-
-    def in_bounds?(x, y, width=@width, height=@height)
-      x >= 0 && y >= 0 && x < width && y < height && @mask[x, y]
-    end
-
-    def in_tight_bounds?(x, y)
-      in_bounds?(x, y, @available_width, @available_height)
-    end
-
-    def next_direction
-      loop do
-        direction = @tries.pop
-        nx, ny = @x + dx(direction), @y + dy(direction)
-
-        if in_tight_bounds?(nx, ny) && (@cells[@y][@x] & (direction | (direction << UNDER_SHIFT)) == 0)
-          if @cells[ny][nx] == 0
-            return direction
-          elsif !DIRECTIONS.include?(@cells[ny][nx]) && @weave > 0 && (@weave == 100 || rand(100) < @weave)
-            # see if we can weave over/under the cell at (nx,ny)
-            nx2, ny2 = nx + dx(direction), ny + dy(direction)
-            return direction if in_tight_bounds?(nx2, ny2) && @cells[ny2][nx2] == 0
-          end
-        end
-
-        while @tries.empty?
-          if @stack.empty?
-            finish!
-            return nil
-          else
-            @x, @y, @tries = @stack.pop
-          end
-        end
-      end
-    end
-
-    def finish!
-      # for symmetrical mazes, if the size of the maze in the direction of reflection is
-      # even, then we have two distinct halves that need to be joined in order for the
-      # maze to be fully connected.
-
-      connector = lambda do |x, y, ix, iy, dir|
-        start_x, start_y = x, y
-        while @cells[y][x] == 0
-          y = (y + iy) % @available_height
-          x = (x + ix) % @available_width
-          break if start_x == x || start_y == y
-        end
-
-        if @cells[y][x] == 0
-          warn "maze cannot be fully connected"
-          nil
-        else
-          @cells[y][x] |= dir
-          @cells[y+dy(dir)][x+dx(dir)] |= opposite(dir)
-          [x,y]
-        end
-      end
-
-      even = lambda { |x| x % 2 == 0 }
-
-      case @symmetry
-        when :x then
-          connector[@available_width-1, rand(@available_height), 0, 1, EAST] if even[@width]
-        when :y then
-          connector[rand(@available_width), @available_height-1, 1, 0, SOUTH] if even[@height]
-        when :xy then
-          if even[@width]
-            x, y = connector[@available_width-1, rand(@available_height), 0, 1, EAST]
-            @cells[@height-y-1][x] |= EAST
-            @cells[@height-y-1][x+1] |= WEST
-          end
-
-          if even[@height]
-            x, y = connector[rand(@available_width), @available_height-1, 1, 0, SOUTH]
-            @cells[y][@width-x-1] |= SOUTH
-            @cells[y+1][@width-x-1] |= NORTH
-          end
-        when :radial then
-          if even[@width]
-            @cells[@available_height-1][@available_width-1] |= EAST | SOUTH
-            @cells[@available_height-1][@available_width] |= WEST | SOUTH
-            @cells[@available_height][@available_width-1] |= EAST | NORTH
-            @cells[@available_height][@available_width] |= WEST | NORTH
-          end
-      end
-
-      add_opening_from(@entrance)
-      add_opening_from(@exit)
-
-      @deadends = deadends_to_braid
-      @generated = @deadends.empty?
-    end
-
-    def deadends_to_braid
-      return [] if @braid.zero?
-
-      ends = dead_ends
-
-      count = ends.length * @braid / 100
-      count = 1 if count < 1
-
-      ends.sort_by { rand }[0,count]
-    end
-
-    def apply_move_at(x, y, direction)
-      if direction == :under
-        @cells[y][x] <<= UNDER_SHIFT
-      else
-        @cells[y][x] |= direction
-      end
-
-      case @symmetry
-      when :x then
-        if direction == :under
-          @cells[y][@width - x - 1] <<= UNDER_SHIFT
-        else
-          @cells[y][@width - x - 1] |= hmirror(direction)
-        end
-      when :y then
-        if direction == :under
-          @cells[@height - y - 1][x] <<= UNDER_SHIFT
-        else
-          @cells[@height - y - 1][x] |= vmirror(direction)
-        end
-      when :xy then
-        if direction == :under
-          @cells[y][@width - x - 1] <<= UNDER_SHIFT
-          @cells[@height - y - 1][x] <<= UNDER_SHIFT
-          @cells[@height - y - 1][@width - x - 1] <<= UNDER_SHIFT
-        else
-          @cells[y][@width - x - 1] |= hmirror(direction)
-          @cells[@height - y - 1][x] |= vmirror(direction)
-          @cells[@height - y - 1][@width - x - 1] |= opposite(direction)
-        end
-      when :radial then
-        if direction == :under
-          @cells[@height - x - 1][y] <<= UNDER_SHIFT
-          @cells[x][@width - y - 1] <<= UNDER_SHIFT
-          @cells[@height - y - 1][@width - x - 1] <<= UNDER_SHIFT
-        else
-          @cells[@height - x - 1][y] |= counter_clockwise(direction)
-          @cells[x][@width - y - 1] |= clockwise(direction)
-          @cells[@height - y - 1][@width - x - 1] |= opposite(direction)
-        end
-      end
-    end
-
-    # TODO: look for the direction that results in the longest loop.
-    # might be kind of spendy, but worth trying, at least.
-    def braid(x, y)
-      return unless dead_end?(@cells[y][x])
-      [opposite(@cells[y][x]), *new_tries].each do |try|
-        next if try == @cells[y][x]
-        nx, ny = x + dx(try), y + dy(try)
-        if in_bounds?(nx, ny)
-          opp = opposite(try)
-          next if @cells[ny][nx] & (opp << UNDER_SHIFT) != 0
-          @cells[y][x] |= try
-          @cells[ny][nx] |= opp
-          return
-        end
-      end
     end
 
     def step
@@ -362,22 +108,31 @@ module Theseus
       apply_move_at(nx, ny, opposite(direction))
 
       @stack.push([@x, @y, @tries])
-      @tries = new_tries
-      @tries.push direction unless rand(100) < @randomness
+      @tries = potential_exits_at(nx, ny).sort_by { rand }
+      @tries.push direction if @tries.include?(direction) unless rand(100) < @randomness
       @x, @y = nx, ny
 
       return true
     end
 
-    def generate!
-      while (cell = step)
-        yield cell if block_given?
-      end
+    def generated?
+      @generated
     end
 
-    def dead_end?(cell)
-      raw = cell & PRIMARY
-      raw == NORTH || raw == SOUTH || raw == EAST || raw == WEST
+    def start
+      adjacent_point(@entrance)
+    end
+
+    def finish
+      adjacent_point(@exit)
+    end
+
+    def potential_exits_at(x, y)
+      raise NotImplementedError, "subclasses must implement #potential_exits_at"
+    end
+
+    def valid?(x, y)
+      x >= 0 && y >= 0 && y < @cells.length && x < @cells[y].length && @mask[x, y]
     end
 
     def dead_ends
@@ -385,7 +140,7 @@ module Theseus
 
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
-          dead_ends << [x, y] if dead_end?(cell)
+          dead_ends << [x, y] if dead?(cell)
         end
       end
 
@@ -415,83 +170,119 @@ module Theseus
       end
     end
 
-    def to_unicursal(options={})
-      unicursal = Maze.new(@width*2, @height*2, options.merge(prebuilt: true))
-
-      set = lambda do |x, y, direction, *recip|
-        nx, ny = x + dx(direction), y + dy(direction)
-        unicursal[x,y] |= direction
-        unicursal[nx, ny] |= opposite(direction) if recip[0]
-      end
-
-      @cells.each_with_index do |row, y|
-        row.each_with_index do |cell, x|
-          x2 = x * 2
-          y2 = y * 2
-
-          if cell & NORTH != 0
-            set[x2, y2, NORTH]
-            set[x2+1, y2, NORTH]
-            set[x2, y2+1, NORTH, true] if cell & WEST == 0
-            set[x2+1, y2+1, NORTH, true] if cell & EAST == 0
-            set[x2, y2+1, EAST, true] if (cell & PRIMARY) == NORTH
-          end
-
-          if cell & SOUTH != 0
-            set[x2, y2+1, SOUTH]
-            set[x2+1, y2+1, SOUTH]
-            set[x2, y2, SOUTH, true] if cell & WEST == 0
-            set[x2+1, y2, SOUTH, true] if cell & EAST == 0
-            set[x2, y2, EAST, true] if (cell & PRIMARY) == SOUTH
-          end
-
-          if cell & WEST != 0
-            set[x2, y2, WEST]
-            set[x2, y2+1, WEST]
-            set[x2+1, y2, WEST, true] if cell & NORTH == 0
-            set[x2+1, y2+1, WEST, true] if cell & SOUTH == 0
-            set[x2+1, y2, SOUTH, true] if (cell & PRIMARY) == WEST
-          end
-
-          if cell & EAST != 0
-            set[x2+1, y2, EAST]
-            set[x2+1, y2+1, EAST]
-            set[x2, y2, EAST, true] if cell & NORTH == 0
-            set[x2, y2+1, EAST, true] if cell & SOUTH == 0
-            set[x2, y2, SOUTH, true] if (cell & PRIMARY) == EAST
-          end
-
-          if cell & (NORTH << UNDER_SHIFT) != 0
-            unicursal[x2, y2] |= (NORTH | SOUTH) << UNDER_SHIFT
-            unicursal[x2+1, y2] |= (NORTH | SOUTH) << UNDER_SHIFT
-            unicursal[x2, y2+1] |= (NORTH | SOUTH) << UNDER_SHIFT
-            unicursal[x2+1, y2+1] |= (NORTH | SOUTH) << UNDER_SHIFT
-          elsif cell & (WEST << UNDER_SHIFT) != 0
-            unicursal[x2, y2] |= (EAST | WEST) << UNDER_SHIFT
-            unicursal[x2+1, y2] |= (EAST | WEST) << UNDER_SHIFT
-            unicursal[x2, y2+1] |= (EAST | WEST) << UNDER_SHIFT
-            unicursal[x2+1, y2+1] |= (EAST | WEST) << UNDER_SHIFT
-          end
+    def opposite(direction)
+      if direction & UNDER != 0
+        opposite(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when N  then S
+        when S  then N
+        when E  then W
+        when W  then E
+        when NE then SW
+        when NW then SE
+        when SE then NW
+        when SW then NE
         end
       end
+    end
 
-      enter_at = unicursal.adjacent_point(unicursal.entrance)
-      exit_at = unicursal.adjacent_point(unicursal.exit)
-
-      if enter_at && exit_at
-        unicursal.add_opening_from(unicursal.entrance)
-        unicursal.add_opening_from(unicursal.exit)
-
-        if enter_at[0] < exit_at[0]
-          unicursal[enter_at[0], enter_at[1]] &= ~EAST
-          unicursal[enter_at[0]+1, enter_at[1]] &= ~WEST
-        elsif enter_at[1] < exit_at[1]
-          unicursal[enter_at[0], enter_at[1]] &= ~SOUTH
-          unicursal[enter_at[0], enter_at[1]+1] &= ~NORTH
+    def hmirror(direction)
+      if direction & UNDER != 0
+        hmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when E  then W
+        when W  then E
+        when NW then NE
+        when NE then NW
+        when SW then SE
+        when SE then SW
+        else direction
         end
       end
+    end
 
-      return unicursal
+    def vmirror(direction)
+      if direction & UNDER != 0
+        vmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when N  then S
+        when S  then N
+        when NE then SE
+        when NW then SW
+        when SE then NE
+        when SW then NW
+        else direction
+        end
+      end
+    end
+
+    # a 90-degree clockwise turn
+    def clockwise(direction)
+      if direction & UNDER != 0
+        clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when N  then E
+        when E  then S
+        when S  then W
+        when W  then N
+        when NW then NE
+        when NE then SE
+        when SE then SW
+        when SW then NW
+        end
+      end
+    end
+
+    # a 90-degree counter-clockwise turn
+    def counter_clockwise(direction)
+      if direction & UNDER != 0
+        counter_clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
+      else
+        case direction
+        when N  then W
+        when W  then S
+        when S  then E
+        when E  then N
+        when NW then SW
+        when SW then SE
+        when SE then NE
+        when NE then NW
+        end
+      end
+    end
+
+    def dx(direction)
+      case direction
+      when E, NE, SE then 1
+      when W, NW, SW then -1
+      else 0
+      end
+    end
+
+    def dy(direction)
+      case direction
+      when S, SE, SW then 1
+      when N, NE, NW then -1
+      else 0
+      end
+    end
+
+    def row_length(row)
+      @cells[row].length
+    end
+
+    def dead?(cell)
+      raw = cell & PRIMARY
+      raw == N || raw == S || raw == E || raw == W ||
+        raw == NE || raw == NW || raw == SE || raw == SW
+    end
+
+    def add_opening_from(point)
+      raise NotImplementedError, "subclasses must implement #add_opening_from"
     end
 
     def solve(a=start, b=finish)
@@ -499,132 +290,163 @@ module Theseus
     end
 
     def inspect
-      "#<Maze:0x%X %dx%d %s>" % [
+      "#<#{self.class.name}:0x%X %dx%d %s>" % [
         object_id, @width, @height,
         generated? ? "generated" : "not generated"]
     end
 
-    def to_s(mode=nil)
-      case mode
-      when nil then to_simple_ascii
-      when :utf8_lines then to_utf8_lines
-      when :utf8_halls then to_utf8_halls
-      else raise ArgumentError, "unknown mode #{mode.inspect}"
+    private
+
+    def configure_symmetry
+      if @symmetry != :none
+        raise NotImplementedError, "only :none symmetry is implemented by default"
       end
     end
 
-    def to(format, options={})
-      case format
-      when :png then
-        require 'theseus/formatters/png'
-        Formatters::PNG.new(self, options).to_blob
+    def setup_grid
+      Array.new(height) { Array.new(width, 0) }
+    end
+
+    def deadends_to_braid
+      return [] if @braid.zero?
+
+      ends = dead_ends
+
+      count = ends.length * @braid / 100
+      count = 1 if count < 1
+
+      ends.sort_by { rand }[0,count]
+    end
+
+    def default_entrance
+      @cells.each_with_index do |row, y|
+        row.each_with_index do |cell, x|
+          return [x-1, y] if !@mask[x, y]
+        end
+      end
+      [0, 0] # if every cell is masked, then 0,0 is as good as any!
+    end
+
+    def default_exit
+      @cells.reverse.each_with_index do |row, y|
+        ry = @cells.length - y - 1
+        row.reverse.each_with_index do |cell, x|
+          rx = row.length - x - 1
+          return [rx+1, ry] if !@mask[rx, ry]
+        end
+      end
+      [0, 0] # if every cell is masked, then 0,0 is as good as any!
+    end
+
+    def next_direction
+      loop do
+        direction = @tries.pop
+        nx, ny = @x + dx(direction), @y + dy(direction)
+
+        if valid?(nx, ny) && (@cells[@y][@x] & (direction | (direction << UNDER_SHIFT)) == 0)
+          if @cells[ny][nx] == 0
+            return direction
+          elsif !dead?(@cells[ny][nx]) && @weave > 0 && rand(100) < @weave
+            # see if we can weave over/under the cell at (nx,ny)
+            nx2, ny2 = nx + dx(direction), ny + dy(direction)
+            return direction if valid?(nx2, ny2) && @cells[ny2][nx2] == 0
+          end
+        end
+
+        while @tries.empty?
+          if @stack.empty?
+            finish!
+            return nil
+          else
+            @x, @y, @tries = @stack.pop
+          end
+        end
+      end
+    end
+
+    def apply_move_at(x, y, direction)
+      if direction == :under
+        @cells[y][x] <<= UNDER_SHIFT
       else
-        raise ArgumentError, "unknown format: #{format.inspect}"
+        @cells[y][x] |= direction
+      end
+
+      case @symmetry
+      when :x      then move_symmetrically_in_x(x, y, direction)
+      when :y      then move_symmetrically_in_y(x, y, direction)
+      when :xy     then move_symmetrically_in_xy(x, y, direction)
+      when :radial then move_symmetrically_radially(x, y, direction)
       end
     end
 
-    SIMPLE_SPRITES = [
-      ["   ", "   "], # " "
-      ["| |", "+-+"], # "╵"
-      ["+-+", "| |"], # "╷"
-      ["| |", "| |"], # "│",
-      ["+--", "+--"], # "╶" 
-      ["| .", "+--"], # "└" 
-      ["+--", "| ."], # "┌"
-      ["| .", "| ."], # "├" 
-      ["--+", "--+"], # "╴"
-      [". |", "--+"], # "┘"
-      ["--+", ". |"], # "┐"
-      [". |", ". |"], # "┤"
-      ["---", "---"], # "─"
-      [". .", "---"], # "┴"
-      ["---", ". ."], # "┬"
-      [". .", ". ."]  # "┼"
-    ]
+    def move_symmetrically_in_x(x, y, direction)
+      row_width = @cells[y].length
+      if direction == :under
+        @cells[y][row_width - x - 1] <<= UNDER_SHIFT
+      else
+        @cells[y][row_width - x - 1] |= hmirror(direction)
+      end
+    end
 
-    UTF8_SPRITES = [
-      ["   ", "   "], # " "
-      ["│ │", "└─┘"], # "╵"
-      ["┌─┐", "│ │"], # "╷"
-      ["│ │", "│ │"], # "│",
-      ["┌──", "└──"], # "╶" 
-      ["│ └", "└──"], # "└" 
-      ["┌──", "│ ┌"], # "┌"
-      ["│ └", "│ ┌"], # "├" 
-      ["──┐", "──┘"], # "╴"
-      ["┘ │", "──┘"], # "┘"
-      ["──┐", "┐ │"], # "┐"
-      ["┘ │", "┐ │"], # "┤"
-      ["───", "───"], # "─"
-      ["┘ └", "───"], # "┴"
-      ["───", "┐ ┌"], # "┬"
-      ["┘ └", "┐ ┌"]  # "┼"
-    ]
+    def move_symmetrically_in_y(x, y, direction)
+      if direction == :under
+        @cells[@cells.length - y - 1][x] <<= UNDER_SHIFT
+      else
+        @cells[@cells.length - y - 1][x] |= vmirror(direction)
+      end
+    end
 
-    UTF8_LINES = [" ", "╵", "╷", "│", "╶", "└", "┌", "├", "╴", "┘", "┐", "┤", "─", "┴", "┬", "┼"]
+    def move_symmetrically_in_xy(x, y, direction)
+      row_width = @cells[y].length
+      if direction == :under
+        @cells[y][row_width - x - 1] <<= UNDER_SHIFT
+        @cells[@cells.length - y - 1][x] <<= UNDER_SHIFT
+        @cells[@cells.length - y - 1][row_width - x - 1] <<= UNDER_SHIFT
+      else
+        @cells[y][row_width - x - 1] |= hmirror(direction)
+        @cells[@cells.length - y - 1][x] |= vmirror(direction)
+        @cells[@cells.length - y - 1][row_width - x - 1] |= opposite(direction)
+      end
+    end
 
-    def render_with_sprites(sprites)
-      str = ""
-      @cells.each do |row|
-        r1, r2 = "", ""
-        row.each do |cell|
-          sprite = sprites[cell & PRIMARY]
-          r1 << sprite[0]
-          r2 << sprite[1]
+    def move_symmetrically_radially(x, y, direction)
+      row_width = @cells[y].length
+      if direction == :under
+        @cells[@cells.length - x - 1][y] <<= UNDER_SHIFT
+        @cells[x][row_width - y - 1] <<= UNDER_SHIFT
+        @cells[@cells.length - y - 1][row_width - x - 1] <<= UNDER_SHIFT
+      else
+        @cells[@cells.length - x - 1][y] |= counter_clockwise(direction)
+        @cells[x][row_width - y - 1] |= clockwise(direction)
+        @cells[@cells.length - y - 1][row_width - x - 1] |= opposite(direction)
+      end
+    end
+
+    def finish!
+      add_opening_from(@entrance)
+      add_opening_from(@exit)
+
+      @deadends = deadends_to_braid
+      @generated = @deadends.empty?
+    end
+
+    # TODO: look for the direction that results in the longest loop.
+    # might be kind of spendy, but worth trying, at least.
+    def braid(x, y)
+      return unless dead?(@cells[y][x])
+      tries = potential_exits_at(x, y)
+      [opposite(@cells[y][x]), *tries].each do |try|
+        next if try == @cells[y][x]
+        nx, ny = x + dx(try), y + dy(try)
+        if valid?(nx, ny)
+          opp = opposite(try)
+          next if @cells[ny][nx] & (opp << UNDER_SHIFT) != 0
+          @cells[y][x] |= try
+          @cells[ny][nx] |= opp
+          return
         end
-        str << r1 << "\n"
-        str << r2 << "\n"
-      end
-      str
-    end
-
-    def to_simple_ascii
-      render_with_sprites(SIMPLE_SPRITES)
-    end
-
-    def to_utf8_halls
-      render_with_sprites(UTF8_SPRITES)
-    end
-
-    def to_utf8_lines
-      str = ""
-      @cells.each do |row|
-        row.each do |cell|
-          str << UTF8_LINES[cell & PRIMARY]
-        end
-        str << "\n"
-      end
-      str
-    end
-
-    def add_opening_from(point)
-      x, y = point
-      if in_bounds?(x, y)
-        # nothing to be done
-      elsif in_bounds?(x-1, y)
-        @cells[y][x-1] |= EAST
-      elsif in_bounds?(x+1, y)
-        @cells[y][x+1] |= WEST
-      elsif in_bounds?(x, y-1)
-        @cells[y-1][x] |= SOUTH
-      elsif in_bounds?(x, y+1)
-        @cells[y+1][x] |= NORTH
       end
     end
 
-    def adjacent_point(point)
-      x, y = point
-      if in_bounds?(x, y)
-        [x, y]
-      elsif in_bounds?(x-1, y)
-        [x-1, y]
-      elsif in_bounds?(x+1, y)
-        [x+1, y]
-      elsif in_bounds?(x, y-1)
-        [x, y-1]
-      elsif in_bounds?(x, y+1)
-        [x, y+1]
-      end
-    end
   end
 end

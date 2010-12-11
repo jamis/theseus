@@ -25,6 +25,27 @@ module Theseus
     end
   end
 
+  class TriangleMask
+    attr_reader :height, :width
+
+    def initialize(height)
+      @height = height
+      @width = @height * 2 + 1
+      @grid = Array.new(@height) do |y|
+        run = y * 2 + 1
+        from = (@height - run) / 2
+        to = from + run - 1
+        Array.new(@width) do |x| 
+          (x >= from && x <= to) ? true : false
+        end
+      end
+    end
+
+    def [](x,y)
+      @grid[y][x]
+    end
+  end
+
   class TransparentMask
     attr_reader :width, :height
 

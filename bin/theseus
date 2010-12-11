@@ -2,16 +2,23 @@
 
 require 'optparse'
 require 'theseus'
+require 'theseus/delta_maze'
+require 'theseus/orthogonal_maze'
 require 'theseus/formatters/png'
+
+type_map = {
+  "ortho" => Theseus::OrthogonalMaze,
+  "delta" => Theseus::DeltaMaze
+}
 
 animate = false
 output = "maze"
-width = height = nil
 sparse = 0
 unicursal = false
+type = "ortho"
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
-maze_opts = { mask: nil,
+maze_opts = { mask: nil, width: nil, height: nil,
   randomness: 50, weave: 0, symmetry: :none, braid: 0,
   entrance: nil, exit: nil }
 
@@ -64,6 +71,10 @@ OptionParser.new do |opts|
     srand(s)
   end
 
+  opts.on("-t", "--type TYPE", "ortho,delta (default: #{type})") do |t|
+    type = t
+  end
+
   opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{maze_opts[:symmetry]}')") do |s|
     maze_opts[:symmetry] = s.to_sym
   end
@@ -73,11 +84,11 @@ OptionParser.new do |opts|
   end
 
   opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
-    width = w
+    maze_opts[:width] = w
   end
 
   opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
-    height = h
+    maze_opts[:height] = h
   end
 
   opts.on("-e", "--weave N", Integer, "0-100, chance of a passage to go over/under another (default #{maze_opts[:weave]})") do |v|
@@ -133,10 +144,10 @@ if unicursal
   maze_opts[:exit] = [0,0]
 end
 
-maze_opts[:mask] ||= Theseus::TransparentMask.new(width || 20, height || 20)
-width ||= maze_opts[:mask].width
-height ||= maze_opts[:mask].height
-maze = Theseus::Maze.new(width, height, maze_opts)
+maze_opts[:mask] ||= Theseus::TransparentMask.new(maze_opts[:width] || 20, maze_opts[:height] || 20)
+maze_opts[:width] ||= maze_opts[:mask].width
+maze_opts[:height] ||= maze_opts[:mask].height
+maze = type_map[type].new(maze_opts)
 
 if animate
   step = 0

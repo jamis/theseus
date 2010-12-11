@@ -1,7 +1,4 @@
-# encoding: UTF-8
-
 require 'chunky_png'
-require 'theseus/solver'
 
 module Theseus
   module Formatters
@@ -18,101 +15,63 @@ module Theseus
         :solution       => false
       }
 
-      def initialize(maze, options={})
+      ANY_N = Maze::N | (Maze::N << Maze::UNDER_SHIFT)
+      ANY_S = Maze::S | (Maze::S << Maze::UNDER_SHIFT)
+      ANY_W = Maze::W | (Maze::W << Maze::UNDER_SHIFT)
+      ANY_E = Maze::E | (Maze::E << Maze::UNDER_SHIFT)
+
+      attr_reader :options
+
+      def initialize(maze, options)
         @options = DEFAULTS.merge(options)
 
-        width  = @options[:outer_padding] * 2 + maze.width * @options[:cell_size]
-        height = @options[:outer_padding] * 2 + maze.height * @options[:cell_size]
-        
         [:background, :wall_color, :cell_color, :solution_color].each do |c|
-          @options[c] = ChunkyPNG::Color.from_hex(@options[c]) unless Fixnum === @options[c]
+          options[c] = ChunkyPNG::Color.from_hex(options[c]) unless Fixnum === options[c]
         end
-
-        canvas = ChunkyPNG::Image.new(width, height, @options[:background])
-        def canvas.fill_rect(x0, y0, x1, y1, color)
-          [x0, x1].min.upto([x0, x1].max) do |x|
-            [y0, y1].min.upto([y0, y1].max) do |y|
-              point(x, y, color)
-            end
-          end
-        end
-
-        @d1 = @options[:cell_padding]
-        @d2 = @options[:cell_size] - @options[:cell_padding]
-        @w1 = (@options[:wall_width] / 2.0).floor
-        @w2 = ((@options[:wall_width] - 1) / 2.0).floor
-
-        if @options[:solution]
-          solution_grid = Solver.new(maze).solution_grid
-        end
-
-        maze.height.times do |y|
-          py = @options[:outer_padding] + y * @options[:cell_size]
-          maze.width.times do |x|
-            px = @options[:outer_padding] + x * @options[:cell_size]
-            draw_cell(canvas, px, py, maze[x, y], solution_grid ? solution_grid[x][y] : 0)
-          end
-        end
-
-        @blob = canvas.to_blob
       end
 
       def to_blob
         @blob
       end
 
-      def draw_solution_segment(canvas, x0, y0, x1, y1)
-        canvas.line(x0, y0, x1, y1, @options[:solution_color])
-      end
-
-      ANY_NORTH = Maze::NORTH | (Maze::NORTH << Maze::UNDER_SHIFT)
-      ANY_SOUTH = Maze::SOUTH | (Maze::SOUTH << Maze::UNDER_SHIFT)
-      ANY_WEST = Maze::WEST | (Maze::WEST << Maze::UNDER_SHIFT)
-      ANY_EAST = Maze::EAST | (Maze::EAST << Maze::UNDER_SHIFT)
-
-      def draw_cell(canvas, x, y, cell, solution)
-        return if cell == 0
-
-        color = (solution & cell != 0) ? :solution_color : :cell_color
-
-        canvas.fill_rect(x + @d1, y + @d1, x + @d2, y + @d2, @options[color])
-
-        north = cell & Maze::NORTH == Maze::NORTH
-        north_under = (cell >> Maze::UNDER_SHIFT) & Maze::NORTH == Maze::NORTH
-        south = cell & Maze::SOUTH == Maze::SOUTH
-        south_under = (cell >> Maze::UNDER_SHIFT) & Maze::SOUTH == Maze::SOUTH
-        west = cell & Maze::WEST == Maze::WEST
-        west_under = (cell >> Maze::UNDER_SHIFT) & Maze::WEST == Maze::WEST
-        east = cell & Maze::EAST == Maze::EAST
-        east_under = (cell >> Maze::UNDER_SHIFT) & Maze::EAST == Maze::EAST
-
-        draw_vertical(canvas, x, y, 1, north || north_under, !north || north_under, solution & ANY_NORTH != 0 ? :solution_color : :cell_color) 
-        draw_vertical(canvas, x, y + @options[:cell_size], -1, south || south_under, !south || south_under, solution & ANY_SOUTH != 0 ? :solution_color : :cell_color)
-        draw_horizontal(canvas, x, y, 1, west || west_under, !west || west_under, solution & ANY_WEST != 0 ? :solution_color : :cell_color)
-        draw_horizontal(canvas, x + @options[:cell_size], y, -1, east || east_under, !east || east_under, solution & ANY_EAST != 0 ? :solution_color : :cell_color)
-      end
-
-      def draw_vertical(canvas, x, y, direction, corridor, wall, color)
-        if corridor
-          canvas.fill_rect(x + @d1, y, x + @d2, y + @d1 * direction, @options[color])
-          canvas.fill_rect(x + @d1 - @w1, y - (@w1 * direction), x + @d1 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
-          canvas.fill_rect(x + @d2 - @w2, y - (@w1 * direction), x + @d2 + @w1, y + (@d1 + @w2) * direction, @options[:wall_color])
-        end
-
-        if wall
-          canvas.fill_rect(x + @d1 - @w1, y + (@d1 - @w1) * direction, x + @d2 + @w2, y + (@d1 + @w2) * direction, @options[:wall_color])
+      def fill_rect(canvas, x0, y0, x1, y1, color)
+        [x0, x1].min.upto([x0, x1].max) do |x|
+          [y0, y1].min.upto([y0, y1].max) do |y|
+            canvas.point(x, y, color)
+          end
         end
       end
 
-      def draw_horizontal(canvas, x, y, direction, corridor, wall, color)
-        if corridor
-          canvas.fill_rect(x, y + @d1, x + @d1 * direction, y + @d2, @options[color])
-          canvas.fill_rect(x - (@w1 * direction), y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d1 + @w2, @options[:wall_color])
-          canvas.fill_rect(x - (@w1 * direction), y + @d2 - @w2, x + (@d1 + @w2) * direction, y + @d2 + @w1, @options[:wall_color])
+      def fill_poly(canvas, points, color)
+        min_y = 1_000_000
+        max_y = -1_000_000
+        points.each do |x,y|
+          min_y = y if y < min_y
+          max_y = y if y > max_y
         end
 
-        if wall
-          canvas.fill_rect(x + (@d1 - @w1) * direction, y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d2 + @w2, @options[:wall_color])
+        min_y.floor.upto(max_y.ceil) do |y|
+          nodes = []
+
+          prev = points.last
+          points.each do |point|
+            if point[1] < y && prev[1] >= y || prev[1] < y && point[1] >= y
+              nodes << (point[0] + (y - point[1]).to_f / (prev[1] - point[1]) * (prev[0] - point[0]))
+            end
+            prev = point
+          end
+
+          next if nodes.empty?
+          nodes.sort!
+
+          prev = nil
+          0.step(nodes.length-1, 2) do |a|
+            x1, x2 = nodes[a], nodes[a+1]
+            x1, x2 = x2, x1 if x1 > x2
+            x1.round.upto(x2.round) do |x|
+              canvas.point(x, y, color)
+            end
+          end
         end
       end
     end
