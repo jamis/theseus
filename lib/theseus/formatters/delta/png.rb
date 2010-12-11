@@ -53,15 +53,15 @@ module Theseus
             sign = (cell & Maze::N != 0) ? -1 : 1
             r1, r2 = p2, move(p3, 0, sign*dy)
             fill_rect(canvas, r1[0].round, r1[1].round, r2[0].round, r2[1].round, options[clr])
-            line(canvas, r1, move(r1, 0, sign*dy), options[:wall_color])
-            line(canvas, r2, move(r2, 0, dy-1), options[:wall_color])
+            line(canvas, r1, [r1[0], r2[1]], options[:wall_color])
+            line(canvas, r2, [r2[0], r1[1]], options[:wall_color])
           else
             line(canvas, p2, p3, options[:wall_color])
           end
 
-          dx = options[:cell_padding]+1
+          dx = options[:cell_padding]
           if cell & ANY_W != 0
-            r1, r2, r3, r4 = move(p1,1,0), move(p1,-dx,0), move(p2,-dx,0), move(p2,1,0)
+            r1, r2, r3, r4 = p1, move(p1,-dx,0), move(p2,-dx,0), p2
             fill_poly(canvas, [r1, r2, r3, r4], options[(solution & ANY_W != 0) ? :solution_color : :cell_color])
             line(canvas, r1, r2, options[:wall_color])
             line(canvas, r3, r4, options[:wall_color])
@@ -72,7 +72,7 @@ module Theseus
           end
 
           if cell & ANY_E != 0
-            r1, r2, r3, r4 = move(p1,-1,0), move(p1,dx,0), move(p3,dx,0), move(p3,-1,0)
+            r1, r2, r3, r4 = p1, move(p1,dx,0), move(p3,dx,0), p3
             fill_poly(canvas, [r1, r2, r3, r4], options[(solution & ANY_W != 0) ? :solution_color : :cell_color])
             line(canvas, r1, r2, options[:wall_color])
             line(canvas, r3, r4, options[:wall_color])
