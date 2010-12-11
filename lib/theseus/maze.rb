@@ -313,7 +313,7 @@ module Theseus
     end
 
     def type
-      self.class.name.sub(/Maze$/, "")
+      self.class.name[/::(.*?)Maze$/, 1]
     end
 
     def to(format, options={})
