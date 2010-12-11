@@ -33,7 +33,7 @@ module Theseus
       @width = @height * 2 + 1
       @grid = Array.new(@height) do |y|
         run = y * 2 + 1
-        from = (@height - run) / 2
+        from = @height - y
         to = from + run - 1
         Array.new(@width) do |x| 
           (x >= from && x <= to) ? true : false

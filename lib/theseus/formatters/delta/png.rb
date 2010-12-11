@@ -21,7 +21,7 @@ module Theseus
             py = options[:outer_padding] + y * options[:cell_size]
             maze.row_length(y).times do |x|
               px = options[:outer_padding] + x * options[:cell_size] / 2.0
-              draw_cell(canvas, (x+y) % 2 == 0, px, py, maze[x, y], solution_grid ? solution_grid[x][y] : 0)
+              draw_cell(canvas, maze.points_up?(x,y), px, py, maze[x, y], solution_grid ? solution_grid[x][y] : 0)
             end
           end
 

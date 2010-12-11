@@ -64,7 +64,10 @@ OptionParser.new do |opts|
   end
 
   opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
-    maze_opts[:mask] = Theseus::Mask.from_png(m)
+    case m
+    when /^triangle:(\d+)$/ then maze_opts[:mask] = Theseus::TriangleMask.new($1.to_i)
+    else maze_opts[:mask] = Theseus::Mask.from_png(m)
+    end
   end
 
   opts.on("-s", "--seed N", Integer, "random seed to use") do |s|

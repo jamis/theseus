@@ -2,8 +2,12 @@ require 'theseus/maze'
 
 module Theseus
   class DeltaMaze < Maze
+    def points_up?(x, y)
+      (x + y) % 2 == height % 2
+    end
+
     def potential_exits_at(x, y)
-      vert = ((x + y) % 2 == 0) ? S : N
+      vert = points_up?(x, y) ? S : N
       [vert, vert, E, W] # vert twice, otherwise E/W is extra likely to be selected
     end
 
@@ -14,7 +18,7 @@ module Theseus
         r1 = " "
         r2 = ""
         row.each_with_index do |cell, x|
-          if x % 2 == 0
+          if points_up?(x, y)
             if cell & W == 0
               r1 << "/"
               r2 << "/"
