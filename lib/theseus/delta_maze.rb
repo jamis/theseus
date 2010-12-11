@@ -50,15 +50,5 @@ module Theseus
 
       str
     end
-
-    def to(format, options={})
-      case format
-      when :png then
-        require 'theseus/formatters/delta/png'
-        Formatters::Delta::PNG.new(self, options).to_blob
-      else
-        raise ArgumentError, "unknown format: #{format.inspect}"
-      end
-    end
   end
 end

@@ -3,8 +3,8 @@ require 'theseus/formatters/png'
 
 module Theseus
   module Formatters
-    module Delta
-      class PNG < Theseus::Formatters::PNG
+    class PNG
+      class Delta < PNG
         def initialize(maze, options={})
           super
 

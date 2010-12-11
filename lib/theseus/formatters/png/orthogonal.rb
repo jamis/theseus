@@ -3,8 +3,8 @@ require 'theseus/formatters/png'
 
 module Theseus
   module Formatters
-    module Orthogonal
-      class PNG < Theseus::Formatters::PNG
+    class PNG
+      class Orthogonal < PNG
         def initialize(maze, options={})
           super
 

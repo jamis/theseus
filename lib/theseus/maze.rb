@@ -312,6 +312,20 @@ module Theseus
       Solver.new(self, a, b).solution
     end
 
+    def type
+      self.class.name.sub(/Maze$/, "")
+    end
+
+    def to(format, options={})
+      case format
+      when :png then
+        require "theseus/formatters/png/#{type.downcase}"
+        Formatters::PNG.const_get(type).new(self, options).to_blob
+      else
+        raise ArgumentError, "unknown format: #{format.inspect}"
+      end
+    end
+
     def inspect
       "#<#{self.class.name}:0x%X %dx%d %s>" % [
         object_id, @width, @height,

@@ -152,16 +152,6 @@ module Theseus
       end
     end
 
-    def to(format, options={})
-      case format
-      when :png then
-        require 'theseus/formatters/orthogonal/png'
-        Formatters::Orthogonal::PNG.new(self, options).to_blob
-      else
-        raise ArgumentError, "unknown format: #{format.inspect}"
-      end
-    end
-
     SIMPLE_SPRITES = [
       ["   ", "   "], # " "
       ["| |", "+-+"], # "╵"
