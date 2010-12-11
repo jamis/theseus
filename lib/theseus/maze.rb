@@ -282,7 +282,30 @@ module Theseus
     end
 
     def add_opening_from(point)
-      raise NotImplementedError, "subclasses must implement #add_opening_from"
+      x, y = point
+      if valid?(x, y)
+        # nothing to be done
+      else
+        potential_exits_at(x, y).each do |direction|
+          nx, ny = x + dx(direction), y + dy(direction)
+          if valid?(nx, ny)
+            @cells[ny][nx] |= opposite(direction)
+            return
+          end
+        end
+      end
+    end
+
+    def adjacent_point(point)
+      x, y = point
+      if valid?(x, y)
+        [x, y]
+      else
+        potential_exits_at(x, y).each do |direction|
+          nx, ny = x + dx(direction), y + dy(direction)
+          return [nx, ny] if valid?(nx, ny)
+        end
+      end
     end
 
     def solve(a=start, b=finish)
@@ -321,7 +344,7 @@ module Theseus
     def default_entrance
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
-          return [x-1, y] if !@mask[x, y]
+          return [x-1, y] if @mask[x, y]
         end
       end
       [0, 0] # if every cell is masked, then 0,0 is as good as any!
@@ -332,7 +355,7 @@ module Theseus
         ry = @cells.length - y - 1
         row.reverse.each_with_index do |cell, x|
           rx = row.length - x - 1
-          return [rx+1, ry] if !@mask[rx, ry]
+          return [rx+1, ry] if @mask[rx, ry]
         end
       end
       [0, 0] # if every cell is masked, then 0,0 is as good as any!

@@ -45,17 +45,10 @@ module Theseus
           p2 = [x + options[:cell_padding], up ? (y + options[:cell_size] - options[:cell_padding]) : (y + options[:cell_padding])]
           p3 = [x + options[:cell_size] - options[:cell_padding], p2[1]]
 
-          if cell & (Maze::N << Maze::UNDER_SHIFT) != 0
-            clr = (solution & (Maze::N << Maze::UNDER_SHIFT) != 0) ? :solution_color : :cell_color
-            fill_rect(canvas, x + options[:cell_padding], y,
-              x + options[:cell_size] - options[:cell_padding], y + options[:cell_size],
-              options[clr])
-          end
-
           fill_poly(canvas, [p1, p2, p3], options[color])
 
           if cell & (Maze::N | Maze::S) != 0
-            clr = (solution & Maze::N != 0) ? :solution_color : :cell_color
+            clr = (solution & (Maze::N | Maze::S) != 0) ? :solution_color : :cell_color
             dy = options[:cell_padding]
             sign = (cell & Maze::N != 0) ? -1 : 1
             r1, r2 = p2, move(p3, 0, sign*dy)
@@ -88,20 +81,6 @@ module Theseus
           if cell & Maze::E == 0
             line(canvas, p3, p1, options[:wall_color])
           end
-
-          #north = cell & Maze::N == Maze::N
-          #north_under = (cell >> Maze::UNDER_SHIFT) & Maze::N == Maze::N
-          #south = cell & Maze::S == Maze::S
-          #south_under = (cell >> Maze::UNDER_SHIFT) & Maze::S == Maze::S
-          #west = cell & Maze::W == Maze::W
-          #west_under = (cell >> Maze::UNDER_SHIFT) & Maze::W == Maze::W
-          #east = cell & Maze::E == Maze::E
-          #east_under = (cell >> Maze::UNDER_SHIFT) & Maze::E == Maze::E
-
-          #draw_vertical(canvas, x, y, 1, north || north_under, !north || north_under, solution & ANY_N != 0 ? :solution_color : :cell_color) 
-          #draw_vertical(canvas, x, y + options[:cell_size], -1, south || south_under, !south || south_under, solution & ANY_S != 0 ? :solution_color : :cell_color)
-          #draw_horizontal(canvas, x, y, 1, west || west_under, !west || west_under, solution & ANY_W != 0 ? :solution_color : :cell_color)
-          #draw_horizontal(canvas, x + options[:cell_size], y, -1, east || east_under, !east || east_under, solution & ANY_E != 0 ? :solution_color : :cell_color)
         end
       end
     end

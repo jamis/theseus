@@ -236,36 +236,6 @@ module Theseus
       str
     end
 
-    def add_opening_from(point)
-      x, y = point
-      if valid?(x, y)
-        # nothing to be done
-      elsif valid?(x-1, y)
-        @cells[y][x-1] |= E
-      elsif valid?(x+1, y)
-        @cells[y][x+1] |= W
-      elsif valid?(x, y-1)
-        @cells[y-1][x] |= S
-      elsif valid?(x, y+1)
-        @cells[y+1][x] |= N
-      end
-    end
-
-    def adjacent_point(point)
-      x, y = point
-      if valid?(x, y)
-        [x, y]
-      elsif valid?(x-1, y)
-        [x-1, y]
-      elsif valid?(x+1, y)
-        [x+1, y]
-      elsif valid?(x, y-1)
-        [x, y-1]
-      elsif valid?(x, y+1)
-        [x, y+1]
-      end
-    end
-
     private
 
     def configure_symmetry

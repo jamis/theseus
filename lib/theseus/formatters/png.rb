@@ -35,8 +35,8 @@ module Theseus
       end
 
       def fill_rect(canvas, x0, y0, x1, y1, color)
-        [x0, x1].min.upto([x0, x1].max) do |x|
-          [y0, y1].min.upto([y0, y1].max) do |y|
+        [x0, x1].min.to_i.upto([x0, x1].max.to_i) do |x|
+          [y0, y1].min.to_i.upto([y0, y1].max.to_i) do |y|
             canvas.point(x, y, color)
           end
         end

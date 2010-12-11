@@ -55,20 +55,5 @@ module Theseus
         raise ArgumentError, "unknown format: #{format.inspect}"
       end
     end
-
-    def add_opening_from(point)
-      x, y = point
-      if valid?(x, y)
-        # nothing to be done
-      elsif valid?(x-1, y)
-        @cells[y][x-1] |= E
-      elsif valid?(x+1, y)
-        @cells[y][x+1] |= W
-      elsif valid?(x-1, y-1)
-        @cells[y-1][x-1] |= S
-      elsif valid?(x+1, y+1)
-        @cells[y+1][x+1] |= N
-      end
-    end
   end
 end
