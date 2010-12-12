@@ -38,6 +38,24 @@ module Theseus
           canvas.line(p1[0].round, p1[1].round, p2[0].round, p2[1].round, color)
         end
 
+        # returns the projection of point p onto the line that passes through a and c
+        def project(p, a, c)
+          # equation of line ac, y = m1 * x + b1
+          m1 = (c[1] - a[1]) / (c[0] - a[0]).to_f
+          b1 = a[1] - m1 * a[0]
+
+          # equation of line through p that is perpendicular to ac
+          # y = m2 * x + b2
+          m2 = -1 / m1
+          b2 = p[1] - m2 * p[0]
+
+          # solve for intersection of two lines
+          dx = (m1 * a[0] - a[1] - m2 * p[0] + p[1]) / (m1 - m2)
+          dy = m1 * dx + b1
+
+          return [dx, dy]
+        end
+
         def draw_cell(canvas, shifted, x, y, cell, solution)
           return if cell == 0
 
@@ -45,6 +63,8 @@ module Theseus
 
           size = options[:cell_size] - options[:cell_padding] * 2
           s4 = size / 4.0
+
+          fs4 = options[:cell_size] / 4.0 # fs == full-size, without padding
 
           p1 = [x + options[:cell_padding] + s4, y + options[:cell_padding]]
           p2 = [x + options[:cell_size] - options[:cell_padding] - s4, p1[1]]
@@ -55,20 +75,50 @@ module Theseus
 
           fill_poly(canvas, [p1, p2, p3, p4, p5, p6], options[color])
 
-          n  = (cell & Maze::N == 0)
-          s  = (cell & Maze::S == 0)
-          nw = (cell & (shifted ? Maze::W : Maze::NW) == 0)
-          ne = (cell & (shifted ? Maze::E : Maze::NE) == 0)
-          sw = (cell & (shifted ? Maze::SW : Maze::W) == 0)
-          se = (cell & (shifted ? Maze::SE : Maze::E) == 0)
+          n  = Maze::N
+          s  = Maze::S
+          nw = shifted ? Maze::W : Maze::NW
+          ne = shifted ? Maze::E : Maze::NE
+          sw = shifted ? Maze::SW : Maze::W
+          se = shifted ? Maze::SE : Maze::E
 
-          
-          line(canvas, p1, p2, options[:wall_color]) if n
-          line(canvas, p2, p3, options[:wall_color]) if ne
-          line(canvas, p3, p4, options[:wall_color]) if se
-          line(canvas, p4, p5, options[:wall_color]) if s
-          line(canvas, p5, p6, options[:wall_color]) if sw
-          line(canvas, p6, p1, options[:wall_color]) if nw
+          any = proc { |x| x | (x << Maze::UNDER_SHIFT) }
+
+          if cell & any[s] != 0
+            r1, r2 = p5, move(p4, 0, options[:cell_padding]*2)
+            fill_rect(canvas, r1[0], r1[1], r2[0], r2[1], options[(solution & any[s] == 0) ? :cell_color : :solution_color])
+            line(canvas, p5, move(p5, 0, options[:cell_padding]*2), options[:wall_color])
+            line(canvas, p4, move(p4, 0, options[:cell_padding]*2), options[:wall_color])
+          end
+
+          if cell & any[ne] != 0
+            ne_x = x + 3 * options[:cell_size] / 4.0
+            ne_y = y - options[:cell_size] * 0.5
+            ne_p5 = [ne_x + options[:cell_padding] + s4, ne_y + options[:cell_size] - options[:cell_padding]]
+            ne_p6 = [ne_x + options[:cell_padding], ne_y + options[:cell_size] * 0.5]
+            r1, r2, r3, r4 = p2, p3, ne_p5, ne_p6
+            fill_poly(canvas, [r1, r2, r3, r4], options[(solution & any[ne] == 0) ? :cell_color : :solution_color])
+            line(canvas, r1, r4, options[:wall_color])
+            line(canvas, r2, r3, options[:wall_color])
+          end
+
+          if cell & any[se] != 0
+            se_x = x + 3 * options[:cell_size] / 4.0
+            se_y = y + options[:cell_size] * 0.5
+            se_p1 = [se_x + s4 + options[:cell_padding], se_y + options[:cell_padding]]
+            se_p6 = [se_x + options[:cell_padding], se_y + options[:cell_size] * 0.5]
+            r1, r2, r3, r4 = p3, p4, se_p6, se_p1
+            fill_poly(canvas, [r1, r2, r3, r4], options[(solution & any[se] == 0) ? :cell_color : :solution_color])
+            line(canvas, r1, r4, options[:wall_color])
+            line(canvas, r2, r3, options[:wall_color])
+          end
+
+          line(canvas, p1, p2, options[:wall_color]) if cell & n == 0
+          line(canvas, p2, p3, options[:wall_color]) if cell & ne == 0
+          line(canvas, p3, p4, options[:wall_color]) if cell & se == 0
+          line(canvas, p4, p5, options[:wall_color]) if cell & s == 0
+          line(canvas, p5, p6, options[:wall_color]) if cell & sw == 0
+          line(canvas, p6, p1, options[:wall_color]) if cell & nw == 0
         end
       end
     end
