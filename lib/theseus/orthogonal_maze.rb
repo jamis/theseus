@@ -65,7 +65,7 @@ module Theseus
     end
 
     def to_unicursal(options={})
-      unicursal = Maze.new(@width*2, @height*2, options.merge(prebuilt: true))
+      unicursal = OrthogonalMaze.new(options.merge(width: @width*2, height: @height*2, prebuilt: true))
 
       set = lambda do |x, y, direction, *recip|
         nx, ny = x + dx(direction), y + dy(direction)
