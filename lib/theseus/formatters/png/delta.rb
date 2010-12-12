@@ -9,7 +9,7 @@ module Theseus
           super
 
           height = options[:outer_padding] * 2 + maze.height * options[:cell_size]
-          width = options[:outer_padding] * 2 + ((maze.width + 1) / 2) * options[:cell_size]
+          width = options[:outer_padding] * 2 + (maze.width + 1) * options[:cell_size] / 2
 
           canvas = ChunkyPNG::Image.new(width, height, options[:background])
 
