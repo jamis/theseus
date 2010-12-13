@@ -78,7 +78,7 @@ OptionParser.new do |opts|
     srand(s)
   end
 
-  opts.on("-t", "--type TYPE", "ortho,delta (default: #{type})") do |t|
+  opts.on("-t", "--type TYPE", "#{type_map.keys.sort.join(",")} (default: #{type})") do |t|
     type = t
   end
 
