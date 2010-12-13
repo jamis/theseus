@@ -15,11 +15,23 @@ module Theseus
       # even, then we have two distinct halves that need to be joined in order for the
       # maze to be fully connected.
 
+      available_width, available_height = @width, @height
+
+      case @symmetry
+      when :x then
+        available_width = available_width / 2
+      when :y then
+        available_height = available_height / 2
+      when :xy, :radial then 
+        available_width = available_width / 2
+        available_height = available_height / 2
+      end
+
       connector = lambda do |x, y, ix, iy, dir|
         start_x, start_y = x, y
         while @cells[y][x] == 0
-          y = (y + iy) % @available_height
-          x = (x + ix) % @available_width
+          y = (y + iy) % available_height
+          x = (x + ix) % available_width
           break if start_x == x || start_y == y
         end
 
@@ -37,27 +49,27 @@ module Theseus
 
       case @symmetry
         when :x then
-          connector[@available_width-1, rand(@available_height), 0, 1, E] if even[@width]
+          connector[available_width-1, rand(available_height), 0, 1, E] if even[@width]
         when :y then
-          connector[rand(@available_width), @available_height-1, 1, 0, S] if even[@height]
+          connector[rand(available_width), available_height-1, 1, 0, S] if even[@height]
         when :xy then
           if even[@width]
-            x, y = connector[@available_width-1, rand(@available_height), 0, 1, E]
+            x, y = connector[available_width-1, rand(available_height), 0, 1, E]
             @cells[@height-y-1][x] |= E
             @cells[@height-y-1][x+1] |= W
           end
 
           if even[@height]
-            x, y = connector[rand(@available_width), @available_height-1, 1, 0, S]
+            x, y = connector[rand(available_width), available_height-1, 1, 0, S]
             @cells[y][@width-x-1] |= S
             @cells[y+1][@width-x-1] |= N
           end
         when :radial then
           if even[@width]
-            @cells[@available_height-1][@available_width-1] |= E | S
-            @cells[@available_height-1][@available_width] |= W | S
-            @cells[@available_height][@available_width-1] |= E | N
-            @cells[@available_height][@available_width] |= W | N
+            @cells[available_height-1][available_width-1] |= E | S
+            @cells[available_height-1][available_width] |= W | S
+            @cells[available_height][available_width-1] |= E | N
+            @cells[available_height][available_width] |= W | N
           end
       end
 
