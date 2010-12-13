@@ -154,6 +154,10 @@ maze_opts[:width] ||= maze_opts[:mask].width
 maze_opts[:height] ||= maze_opts[:mask].height
 maze = type_map[type].new(maze_opts)
 
+if unicursal && !maze.respond_to?(:to_unicursal)
+  abort "#{type} mazes do not support the -u (unicursal) option"
+end
+
 if animate
   step = 0
   maze.generate! do
