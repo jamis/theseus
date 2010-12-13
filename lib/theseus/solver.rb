@@ -4,7 +4,7 @@ module Theseus
   class Solver
     def initialize(maze, a=maze.start, b=maze.finish)
       @maze = maze
-      @visits = Array.new(@maze.height) { Array.new(@maze.width, false) }
+      @visits = Array.new(@maze.height) { Array.new(@maze.width, 0) }
       @a = a
       @b = b
       @stack = []
@@ -29,37 +29,30 @@ module Theseus
     end
 
     def solution_grid
-      relationship = lambda do |a, b|
-        if a[0] < b[0]
-          Maze::E
-        elsif a[0] > b[0]
-          Maze::W
-        elsif a[1] < b[1]
-          Maze::S
-        elsif a[1] > b[1]
-          Maze::N
-        end
-      end
-
       grid = Array.new(@maze.width) { Array.new(@maze.height, 0) }
       previous = @maze.entrance
       solution.each do |step|
-        if (direction = relationship[previous, step])
+        if (direction = @maze.relative_direction(previous, step))
           grid[previous[0]][previous[1]] |= direction if @maze.valid?(previous[0], previous[1])
           grid[step[0]][step[1]] |= @maze.opposite(direction)
         end
         previous = step
       end
       
-      if (direction = relationship[previous, @maze.exit])
+      if (direction = @maze.relative_direction(previous, @maze.exit))
         grid[previous[0]][previous[1]] |= direction
       end
 
       return grid
     end
 
+    VISIT_MASK = { false => 1, true => 2 }
+
     def next_step
-      if @stack.empty?
+      if @stack == [:fail]
+        return nil
+      elsif @stack.empty?
+        @stack.push(:fail)
         @stack.push([@a, @maze.potential_exits_at(@a[0], @a[1]).dup])
         return @a.dup
       elsif @stack.last[0] == @b
@@ -75,17 +68,28 @@ module Theseus
             x, y = spot[0]
             return :backtrack
           elsif (cell & try) != 0
-            dir = (try & Maze::PRIMARY != 0) ? try : (try >> Maze::UNDER_SHIFT)
-            nx, ny = x + @maze.dx(dir), y + @maze.dy(dir)
-            # might be out of bounds, due to the entrance/exit passages
-            next unless @maze.valid?(nx, ny) && !@visits[ny][nx]
+            # is the current path an "under" path for the current cell (x,y)?
+            is_under = (try & Maze::UNDER != 0)
 
-            @visits[ny][nx] = true
+            dir = is_under ? (try >> Maze::UNDER_SHIFT) : try
+            opposite = @maze.opposite(dir)
+
+            nx, ny = x + @maze.dx(dir), y + @maze.dy(dir)
+
+            # is the new path an "under" path for the next cell (nx,ny)?
+            going_under = @maze[nx, ny] & (opposite << Maze::UNDER_SHIFT) != 0
+
+            # might be out of bounds, due to the entrance/exit passages
+            next if !@maze.valid?(nx, ny) || (@visits[ny][nx] & VISIT_MASK[going_under] != 0)
+
+            @visits[ny][nx] |= VISIT_MASK[going_under]
             ncell = @maze[nx, ny]
             p = [nx, ny]
 
-            if ncell & (dir << Maze::UNDER_SHIFT) != 0 # underpass
-              directions = [dir << Maze::UNDER_SHIFT]
+            if ncell & (opposite << Maze::UNDER_SHIFT) != 0 # underpass
+              unders = (ncell & Maze::UNDER) >> Maze::UNDER_SHIFT
+              exit_dir = unders & ~opposite
+              directions = [exit_dir << Maze::UNDER_SHIFT]
             else
               directions = @maze.potential_exits_at(nx, ny) - [@maze.opposite(dir)]
             end

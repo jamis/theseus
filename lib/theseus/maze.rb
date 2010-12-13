@@ -297,6 +297,35 @@ module Theseus
       end
     end
 
+    # returns the direction of 'to' relative to 'from'. 'to' and 'from'
+    # are both points (2-tuples).
+    def relative_direction(from, to)
+      if from[0] < to[0]
+        if from[1] < to[1]
+          SE
+        elsif from[1] > to[1]
+          NE
+        else
+          E
+        end
+      elsif from[0] > to[0]
+        if from[1] < to[1]
+          SW
+        elsif from[1] > to[1]
+          NW
+        else
+          W
+        end
+      elsif from[1] < to[1]
+        S
+      elsif from[1] > to[1]
+        N
+      else
+        # same point!
+        nil
+      end
+    end
+
     def solve(a=start, b=finish)
       Solver.new(self, a, b).solution
     end
@@ -480,15 +509,15 @@ module Theseus
 
     def perform_weave(from_x, from_y, to_x, to_y, direction)
       if rand(2) == 0 # move under existing passage
-        apply_move_at(nx, ny, direction << UNDER_SHIFT)
-        apply_move_at(nx, ny, opposite(direction) << UNDER_SHIFT)
+        apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
+        apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)
       else # move over existing passage
-        apply_move_at(nx, ny, :under)
-        apply_move_at(nx, ny, direction)
-        apply_move_at(nx, ny, opposite(direction))
+        apply_move_at(to_x, to_y, :under)
+        apply_move_at(to_x, to_y, direction)
+        apply_move_at(to_x, to_y, opposite(direction))
       end
 
-      [nx + dx(direction), ny + dy(direction), direction]
+      [to_x + dx(direction), to_y + dy(direction), direction]
     end
 
   end
