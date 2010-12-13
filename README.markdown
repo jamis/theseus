@@ -9,7 +9,6 @@ Theseus is a maze generation library for Ruby. It's features are:
 * Output the maze as either text or PNG.
 * Apply a mask to the process to constrain how the maze is built.
 * Culling dead-ends from a maze to increase its sparseness.
-* Automatically solve the generated mazes (and incorporate the solution into the output).
 * Convert any orthogonal maze to a unicursal (labyrinth-style) maze.
 * Generate mazes with high braid or low braid (or anything in-between). (a "perfectly braided" maze is completely multiply-connected, with no dead-ends and circular paths)
 * Generate mazes with high weave or low weave (or anything in-between). ("weave" refers to how frequently passages move under or over existing passages.)
@@ -43,13 +42,13 @@ Pass the "-h" option for a list of all supported options.
 
 Alternatively, you can build the mazes programmatically:
 
-    require 'theseus'
+    require 'theseus/orthogonal_maze'
 
-    maze1 = Theseus::Maze.generate(10, 10)
+    maze1 = Theseus::OrthogonalMaze.generate(10, 10)
     File.open("maze.png", "w") { |f| f.write(maze1.to(:png)) }
 
     mask = Theseus::Mask.from_png("mask.png")
-    maze2 = Theseus::Maze.new(mask.width, mask.height, weave: 50,
+    maze2 = Theseus::OrthogonalMaze.new(mask.width, mask.height, weave: 50,
       randomness: 100, mask: mask)
     n = 0
     while maze2.step
