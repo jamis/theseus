@@ -92,18 +92,7 @@ module Theseus
 
       # if (nx,ny) is already visited, then we're weaving (moving either over
       # or under the existing passage).
-      if @cells[ny][nx] != 0
-        if rand(2) == 0 # move under existing passage
-          apply_move_at(nx, ny, direction << UNDER_SHIFT)
-          apply_move_at(nx, ny, opposite(direction) << UNDER_SHIFT)
-        else # move over existing passage
-          apply_move_at(nx, ny, :under)
-          apply_move_at(nx, ny, direction)
-          apply_move_at(nx, ny, opposite(direction))
-        end
-
-        nx, ny = nx + dx(direction), ny + dy(direction)
-      end
+      nx, ny, direction = perform_weave(@x, @y, nx, ny, direction) if @cells[ny][nx] != 0
 
       apply_move_at(nx, ny, opposite(direction))
 
@@ -385,8 +374,7 @@ module Theseus
             return direction
           elsif !dead?(@cells[ny][nx]) && @weave > 0 && rand(100) < @weave
             # see if we can weave over/under the cell at (nx,ny)
-            nx2, ny2 = nx + dx(direction), ny + dy(direction)
-            return direction if valid?(nx2, ny2) && @cells[ny2][nx2] == 0
+            return direction if weave_allowed?(@x, @y, nx, ny, direction)
           end
         end
 
@@ -483,6 +471,24 @@ module Theseus
           return
         end
       end
+    end
+
+    def weave_allowed?(from_x, from_y, thru_x, thru_y, direction)
+      nx2, ny2 = thru_x + dx(direction), thru_y + dy(direction)
+      return valid?(nx2, ny2) && @cells[ny2][nx2] == 0
+    end
+
+    def perform_weave(from_x, from_y, to_x, to_y, direction)
+      if rand(2) == 0 # move under existing passage
+        apply_move_at(nx, ny, direction << UNDER_SHIFT)
+        apply_move_at(nx, ny, opposite(direction) << UNDER_SHIFT)
+      else # move over existing passage
+        apply_move_at(nx, ny, :under)
+        apply_move_at(nx, ny, direction)
+        apply_move_at(nx, ny, opposite(direction))
+      end
+
+      [nx + dx(direction), ny + dy(direction), direction]
     end
 
   end
