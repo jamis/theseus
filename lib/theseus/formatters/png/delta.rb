@@ -28,14 +28,6 @@ module Theseus
           @blob = canvas.to_blob
         end
 
-        def move(point, dx, dy)
-          [point[0] + dx, point[1] + dy]
-        end
-
-        def line(canvas, p1, p2, color)
-          canvas.line(p1[0].round, p1[1].round, p2[0].round, p2[1].round, color)
-        end
-
         def draw_cell(canvas, up, x, y, cell, solution)
           return if cell == 0
 

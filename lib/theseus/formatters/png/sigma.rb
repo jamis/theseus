@@ -30,32 +30,6 @@ module Theseus
           @blob = canvas.to_blob
         end
 
-        def move(point, dx, dy)
-          [point[0] + dx, point[1] + dy]
-        end
-
-        def line(canvas, p1, p2, color)
-          canvas.line(p1[0].round, p1[1].round, p2[0].round, p2[1].round, color)
-        end
-
-        # returns the projection of point p onto the line that passes through a and c
-        def project(p, a, c)
-          # equation of line ac, y = m1 * x + b1
-          m1 = (c[1] - a[1]) / (c[0] - a[0]).to_f
-          b1 = a[1] - m1 * a[0]
-
-          # equation of line through p that is perpendicular to ac
-          # y = m2 * x + b2
-          m2 = -1 / m1
-          b2 = p[1] - m2 * p[0]
-
-          # solve for intersection of two lines
-          dx = (m1 * a[0] - a[1] - m2 * p[0] + p[1]) / (m1 - m2)
-          dy = m1 * dx + b1
-
-          return [dx, dy]
-        end
-
         def draw_cell(canvas, shifted, x, y, cell, solution)
           return if cell == 0
 

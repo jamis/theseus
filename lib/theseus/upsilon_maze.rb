@@ -48,5 +48,13 @@ module Theseus
 
       canvas.map { |row| row.join }.join("\n")
     end
+
+    def perform_weave(from_x, from_y, to_x, to_y, direction)
+      apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
+      apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)
+
+      [to_x + dx(direction), to_y + dy(direction), direction]
+    end
+
   end
 end

@@ -504,7 +504,7 @@ module Theseus
 
     def weave_allowed?(from_x, from_y, thru_x, thru_y, direction)
       nx2, ny2 = thru_x + dx(direction), thru_y + dy(direction)
-      return valid?(nx2, ny2) && @cells[ny2][nx2] == 0
+      return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
     end
 
     def perform_weave(from_x, from_y, to_x, to_y, direction)
