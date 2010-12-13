@@ -5,12 +5,14 @@ require 'theseus'
 require 'theseus/delta_maze'
 require 'theseus/orthogonal_maze'
 require 'theseus/sigma_maze'
+require 'theseus/upsilon_maze'
 require 'theseus/formatters/png'
 
 type_map = {
-  "ortho" => Theseus::OrthogonalMaze,
-  "delta" => Theseus::DeltaMaze,
-  "sigma" => Theseus::SigmaMaze
+  "ortho"   => Theseus::OrthogonalMaze,
+  "delta"   => Theseus::DeltaMaze,
+  "sigma"   => Theseus::SigmaMaze,
+  "upsilon" => Theseus::UpsilonMaze
 }
 
 animate = false
