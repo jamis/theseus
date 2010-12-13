@@ -17,6 +17,7 @@ Theseus is a maze generation library for Ruby. It's features are:
   * orthogonal (the default). Square cells with 4 exits each.
   * delta. Triangular cells with 3 exits each.
   * sigma. Hexagonal cells with 6 exits each.
+  * upsilon. Octagonal and square cells with 8 or 4 exits each.
 
 Requirements
 ============
