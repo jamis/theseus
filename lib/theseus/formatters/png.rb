@@ -56,11 +56,26 @@ module Theseus
         [point[0] + dx, point[1] + dy]
       end
 
+      def clamp(x, low, hi)
+        x = low if x < low
+        x = hi  if x > hi
+        return x
+      end
+
       def line(canvas, p1, p2, color)
-        canvas.line(p1[0].round, p1[1].round, p2[0].round, p2[1].round, color)
+        canvas.line(
+          clamp(p1[0].round, 0, canvas.width-1),
+          clamp(p1[1].round, 0, canvas.height-1),
+          clamp(p2[0].round, 0, canvas.width-1),
+          clamp(p2[1].round, 0, canvas.height-1),
+          color)
       end
 
       def fill_rect(canvas, x0, y0, x1, y1, color)
+        x0 = clamp(x0, 0, canvas.width-1)
+        y0 = clamp(y0, 0, canvas.height-1)
+        x1 = clamp(x1, 0, canvas.width-1)
+        y1 = clamp(y1, 0, canvas.height-1)
         [x0, x1].min.ceil.upto([x0, x1].max.floor) do |x|
           [y0, y1].min.ceil.upto([y0, y1].max.floor) do |y|
             canvas.point(x, y, color)
@@ -75,6 +90,9 @@ module Theseus
           min_y = y if y < min_y
           max_y = y if y > max_y
         end
+
+        min_y = clamp(min_y, 0, canvas.height-1)
+        max_y = clamp(max_y, 0, canvas.height-1)
 
         min_y.floor.upto(max_y.ceil) do |y|
           nodes = []
@@ -94,6 +112,7 @@ module Theseus
           0.step(nodes.length-1, 2) do |a|
             x1, x2 = nodes[a], nodes[a+1]
             x1, x2 = x2, x1 if x1 > x2
+            next if x1 < 0 || x2 >= canvas.width
             x1.ceil.upto(x2.floor) do |x|
               canvas.point(x, y, color)
             end
