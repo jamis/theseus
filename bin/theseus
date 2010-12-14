@@ -16,7 +16,7 @@ output = "maze"
 sparse = 0
 unicursal = false
 type = "ortho"
-format = :png
+format = :ascii
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 maze_opts = { mask: nil, width: nil, height: nil,
@@ -24,6 +24,93 @@ maze_opts = { mask: nil, width: nil, height: nil,
   entrance: nil, exit: nil }
 
 OptionParser.new do |opts|
+  opts.separator ""
+  opts.separator "Required options:"
+
+  opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
+    maze_opts[:width] = w
+  end
+
+  opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
+    maze_opts[:height] = h
+  end
+
+  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
+    case m
+    when /^triangle:(\d+)$/ then maze_opts[:mask] = Theseus::TriangleMask.new($1.to_i)
+    else maze_opts[:mask] = Theseus::Mask.from_png(m)
+    end
+  end
+
+  opts.separator ""
+  opts.separator "Output options:"
+
+  opts.on("-a", "--[no-]animate", "emit frames for each step") do |v|
+    animate = v
+  end
+
+  opts.on("-o", "--output FILE", "where to save the file(s) (for png only)") do |f|
+    output = f
+  end
+
+  opts.on("-f", "--format FMT", "png, ascii (default #{format})") do |f|
+    format = f.to_sym
+  end
+
+  opts.on("-v", "--[no-]solve", "whether to display the solution of the maze") do |s|
+    png_opts[:solution] = s
+  end
+
+  opts.separator ""
+  opts.separator "Maze options:"
+
+  opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
+    srand(s)
+  end
+
+  opts.on("-t", "--type TYPE", "#{type_map.keys.sort.join(",")} (default: #{type})") do |t|
+    type = t
+  end
+
+  opts.on("-u", "--[no-]unicursal", "generate a unicursal maze (results in 2x size)") do |u|
+    unicursal = u
+  end
+
+  opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{maze_opts[:symmetry]}')") do |s|
+    maze_opts[:symmetry] = s.to_sym
+  end
+
+  opts.on("-e", "--weave N", Integer, "0-100, chance of a passage to go over/under another (default #{maze_opts[:weave]})") do |v|
+    maze_opts[:weave] = v
+  end
+
+  opts.on("-r", "--random N", Integer, "0-100, randomness of maze (default #{maze_opts[:randomness]})") do |r|
+    maze_opts[:randomness] = r
+  end
+
+  opts.on("-S", "--sparse N", Integer, "how sparse to make the maze (default #{sparse})") do |s|
+    sparse = s
+  end
+
+  opts.on("-d", "--braid N", Integer, "0-100, percentage of deadends to remove (default #{maze_opts[:braid]})") do |b|
+    maze_opts[:braid] = b
+  end
+
+  opts.on("-R", "--wrap axis", "none,x,y,xy (default #{maze_opts[:wrap]})") do |w|
+    maze_opts[:wrap] = w.to_sym
+  end
+
+  opts.on("-E", "--enter [X,Y]", "the entrance of the maze (default -1,0)") do |s|
+    maze_opts[:entrance] = s.split(/,/).map { |v| v.to_i }
+  end
+
+  opts.on("-X", "--exit [X,Y]", "the exit of the maze (default width,height-1)") do |s|
+    maze_opts[:exit] = s.split(/,/).map { |v| v.to_i }
+  end
+
+  opts.separator ""
+  opts.separator "Formatting options:"
+
   opts.on("-B", "--background COLOR", "rgba hex background color for maze (default %08X)" % png_opts[:background]) do |c|
     png_opts[:background] = c
   end
@@ -56,86 +143,23 @@ OptionParser.new do |opts|
     png_opts[:wall_width] = c
   end
 
-  opts.on("-a", "--[no-]animate", "emit frames for each step") do |v|
-    animate = v
-  end
+  opts.separator ""
+  opts.separator "Other options:"
 
-  opts.on("-o", "--output FILE", "where to save the file(s)") do |f|
-    output = f
-  end
-
-  opts.on("-f", "--format FMT", "png, ascii (default #{format})") do |f|
-    format = f.to_sym
-  end
-
-  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
-    case m
-    when /^triangle:(\d+)$/ then maze_opts[:mask] = Theseus::TriangleMask.new($1.to_i)
-    else maze_opts[:mask] = Theseus::Mask.from_png(m)
-    end
-  end
-
-  opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
-    srand(s)
-  end
-
-  opts.on("-t", "--type TYPE", "#{type_map.keys.sort.join(",")} (default: #{type})") do |t|
-    type = t
-  end
-
-  opts.on("-y", "--symmetry TYPE", "one of none,x,y,xy,radial (default is '#{maze_opts[:symmetry]}')") do |s|
-    maze_opts[:symmetry] = s.to_sym
-  end
-
-  opts.on("-u", "--[no-]unicursal", "generate a unicursal maze (results in 2x size)") do |u|
-    unicursal = u
-  end
-
-  opts.on("-w", "--width N", Integer, "width of the maze (default 20, or mask width)") do |w|
-    maze_opts[:width] = w
-  end
-
-  opts.on("-H", "--height N", Integer, "height of the maze (default 20 or mask height)") do |h|
-    maze_opts[:height] = h
-  end
-
-  opts.on("-e", "--weave N", Integer, "0-100, chance of a passage to go over/under another (default #{maze_opts[:weave]})") do |v|
-    maze_opts[:weave] = v
-  end
-
-  opts.on("-r", "--random N", Integer, "0-100, randomness of maze (default #{maze_opts[:randomness]})") do |r|
-    maze_opts[:randomness] = r
-  end
-
-  opts.on("-S", "--sparse N", Integer, "how sparse to make the maze (default #{sparse})") do |s|
-    sparse = s
-  end
-
-  opts.on("-d", "--braid N", Integer, "0-100, percentage of deadends to remove (default #{maze_opts[:braid]})") do |b|
-    maze_opts[:braid] = b
-  end
-
-  opts.on("-R", "--wrap axis", "none,x,y,xy (default #{maze_opts[:wrap]})") do |w|
-    maze_opts[:wrap] = w.to_sym
-  end
-
-  opts.on("-E", "--enter [X,Y]", "the entrance of the maze (default -1,0)") do |s|
-    maze_opts[:entrance] = s.split(/,/).map { |v| v.to_i }
-  end
-
-  opts.on("-X", "--exit [X,Y]", "the exit of the maze (default width,height-1)") do |s|
-    maze_opts[:exit] = s.split(/,/).map { |v| v.to_i }
-  end
-
-  opts.on("-v", "--[no-]solve", "whether to display the solution of the maze") do |s|
-    png_opts[:solution] = s
-  end
-
-  opts.on("-h", "--help", "this help info") do
+  opts.on_tail("-h", "--help", "this helpful list of options") do
     puts opts
     exit
   end
 end.parse!
+
+# default width to height, and vice-versa
+maze_opts[:width] ||= maze_opts[:height]
+maze_opts[:height] ||= maze_opts[:width]
+
+if maze_opts[:mask].nil? && (maze_opts[:width].nil? || maze_opts[:height].nil?)
+  warn "You must specify either a mask (-m) or the maze dimensions(-w or -H)."
+  abort "Try --help for a full list of options."
+end
 
 if animate
   abort "sparse cannot be used for animated mazes" if sparse > 0
@@ -156,7 +180,7 @@ if unicursal
   maze_opts[:exit] = [0,0]
 end
 
-maze_opts[:mask] ||= Theseus::TransparentMask.new(maze_opts[:width] || 20, maze_opts[:height] || 20)
+maze_opts[:mask] ||= Theseus::TransparentMask.new(maze_opts[:width], maze_opts[:height])
 maze_opts[:width] ||= maze_opts[:mask].width
 maze_opts[:height] ||= maze_opts[:mask].height
 maze = type_map[type].new(maze_opts)
