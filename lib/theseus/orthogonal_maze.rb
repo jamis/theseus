@@ -1,5 +1,3 @@
-# encoding: UTF-8
-
 require 'theseus/maze'
 
 module Theseus
@@ -153,89 +151,6 @@ module Theseus
       end
 
       return unicursal
-    end
-
-    def to_s(mode=nil)
-      case mode
-      when nil then to_simple_ascii
-      when :utf8_lines then to_utf8_lines
-      when :utf8_halls then to_utf8_halls
-      else raise ArgumentError, "unknown mode #{mode.inspect}"
-      end
-    end
-
-    SIMPLE_SPRITES = [
-      ["   ", "   "], # " "
-      ["| |", "+-+"], # "╵"
-      ["+-+", "| |"], # "╷"
-      ["| |", "| |"], # "│",
-      ["+--", "+--"], # "╶" 
-      ["| .", "+--"], # "└" 
-      ["+--", "| ."], # "┌"
-      ["| .", "| ."], # "├" 
-      ["--+", "--+"], # "╴"
-      [". |", "--+"], # "┘"
-      ["--+", ". |"], # "┐"
-      [". |", ". |"], # "┤"
-      ["---", "---"], # "─"
-      [". .", "---"], # "┴"
-      ["---", ". ."], # "┬"
-      [". .", ". ."]  # "┼"
-    ]
-
-    UTF8_SPRITES = [
-      ["   ", "   "], # " "
-      ["│ │", "└─┘"], # "╵"
-      ["┌─┐", "│ │"], # "╷"
-      ["│ │", "│ │"], # "│",
-      ["┌──", "└──"], # "╶" 
-      ["│ └", "└──"], # "└" 
-      ["┌──", "│ ┌"], # "┌"
-      ["│ └", "│ ┌"], # "├" 
-      ["──┐", "──┘"], # "╴"
-      ["┘ │", "──┘"], # "┘"
-      ["──┐", "┐ │"], # "┐"
-      ["┘ │", "┐ │"], # "┤"
-      ["───", "───"], # "─"
-      ["┘ └", "───"], # "┴"
-      ["───", "┐ ┌"], # "┬"
-      ["┘ └", "┐ ┌"]  # "┼"
-    ]
-
-    UTF8_LINES = [" ", "╵", "╷", "│", "╶", "└", "┌", "├", "╴", "┘", "┐", "┤", "─", "┴", "┬", "┼"]
-
-    def render_with_sprites(sprites)
-      str = ""
-      @cells.each do |row|
-        r1, r2 = "", ""
-        row.each do |cell|
-          sprite = sprites[cell & PRIMARY]
-          r1 << sprite[0]
-          r2 << sprite[1]
-        end
-        str << r1 << "\n"
-        str << r2 << "\n"
-      end
-      str
-    end
-
-    def to_simple_ascii
-      render_with_sprites(SIMPLE_SPRITES)
-    end
-
-    def to_utf8_halls
-      render_with_sprites(UTF8_SPRITES)
-    end
-
-    def to_utf8_lines
-      str = ""
-      @cells.each do |row|
-        row.each do |cell|
-          str << UTF8_LINES[cell & PRIMARY]
-        end
-        str << "\n"
-      end
-      str
     end
 
     private

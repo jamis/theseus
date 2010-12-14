@@ -336,12 +336,19 @@ module Theseus
 
     def to(format, options={})
       case format
+      when :ascii then
+        require "theseus/formatters/ascii/#{type.downcase}"
+        Formatters::ASCII.const_get(type).new(self, options)
       when :png then
         require "theseus/formatters/png/#{type.downcase}"
         Formatters::PNG.const_get(type).new(self, options).to_blob
       else
         raise ArgumentError, "unknown format: #{format.inspect}"
       end
+    end
+
+    def to_s(options={})
+      to(:ascii, options).to_s
     end
 
     def inspect
