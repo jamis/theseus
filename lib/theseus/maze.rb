@@ -22,6 +22,7 @@ module Theseus
     attr_reader :randomness
     attr_reader :weave
     attr_reader :braid
+    attr_reader :wrap
     attr_reader :mask
     attr_reader :symmetry
     attr_reader :entrance
@@ -44,6 +45,7 @@ module Theseus
       @mask = options[:mask] || TransparentMask.new
       @weave = options[:weave].to_i
       @braid = options[:braid].to_i
+      @wrap = options[:wrap] || :none
 
       @cells = setup_grid or raise "expected #setup_grid to return the new grid"
 
@@ -120,12 +122,29 @@ module Theseus
       raise NotImplementedError, "subclasses must implement #potential_exits_at"
     end
 
+    def wrap_x?
+      @wrap == :x || @wrap == :xy
+    end
+
+    def wrap_y?
+      @wrap == :y || @wrap == :xy
+    end
+
     def valid?(x, y)
-      x >= 0 && y >= 0 && y < @cells.length && x < @cells[y].length && @mask[x, y]
+      return false if !wrap_y? && (y < 0 || y >= height)
+      y %= height
+      return false if !wrap_x? && (x < 0 || x >= row_length(y))
+      x %= row_length(y)
+      return @mask[x, y]
     end
 
     def move(x, y, direction)
-      [x + dx(direction), y + dy(direction)]
+      nx, ny = x + dx(direction), y + dy(direction)
+
+      ny %= height if wrap_y?
+      nx %= row_length(ny) if wrap_x? && ny > 0 && ny < height
+
+      [nx, ny]
     end
 
     def dead_ends

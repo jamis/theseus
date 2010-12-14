@@ -20,7 +20,7 @@ format = :png
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 maze_opts = { mask: nil, width: nil, height: nil,
-  randomness: 50, weave: 0, symmetry: :none, braid: 0,
+  randomness: 50, weave: 0, symmetry: :none, braid: 0, wrap: :none,
   entrance: nil, exit: nil }
 
 OptionParser.new do |opts|
@@ -113,6 +113,10 @@ OptionParser.new do |opts|
 
   opts.on("-d", "--braid N", Integer, "0-100, percentage of deadends to remove (default #{maze_opts[:braid]})") do |b|
     maze_opts[:braid] = b
+  end
+
+  opts.on("-R", "--wrap axis", "none,x,y,xy (default #{maze_opts[:wrap]})") do |w|
+    maze_opts[:wrap] = w.to_sym
   end
 
   opts.on("-E", "--enter [X,Y]", "the entrance of the maze (default -1,0)") do |s|
