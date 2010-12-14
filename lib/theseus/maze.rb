@@ -86,7 +86,7 @@ module Theseus
       end
 
       direction = next_direction or return !@generated
-      nx, ny = @x + dx(direction), @y + dy(direction)
+      nx, ny = move(@x, @y, direction)
 
       apply_move_at(@x, @y, direction)
 
@@ -124,6 +124,10 @@ module Theseus
       x >= 0 && y >= 0 && y < @cells.length && x < @cells[y].length && @mask[x, y]
     end
 
+    def move(x, y, direction)
+      [x + dx(direction), y + dy(direction)]
+    end
+
     def dead_ends
       dead_ends = []
 
@@ -140,7 +144,7 @@ module Theseus
       dead_ends.each do |(x, y)|
         cell = @cells[y][x]
         direction = cell & PRIMARY
-        nx, ny = x + dx(direction), y + dy(direction)
+        nx, ny = move(x, y, direction)
 
         # if the cell includes UNDER codes, shifting it all UNDER_SHIFT bits to the right
         # will convert those UNDER codes to PRIMARY codes. Otherwise, it will
@@ -152,7 +156,7 @@ module Theseus
         # underneath another corridor.
         if @cells[ny][nx] & (opposite(direction) << UNDER_SHIFT) != 0
           @cells[ny][nx] &= ~((direction | opposite(direction)) << UNDER_SHIFT)
-          nx, ny = nx + dx(direction), ny + dy(direction)
+          nx, ny = move(nx, ny, direction)
         end
 
         @cells[ny][nx] &= ~opposite(direction)
@@ -276,7 +280,7 @@ module Theseus
         # nothing to be done
       else
         potential_exits_at(x, y).each do |direction|
-          nx, ny = x + dx(direction), y + dy(direction)
+          nx, ny = move(x, y, direction)
           if valid?(nx, ny)
             @cells[ny][nx] |= opposite(direction)
             return
@@ -291,7 +295,7 @@ module Theseus
         [x, y]
       else
         potential_exits_at(x, y).each do |direction|
-          nx, ny = x + dx(direction), y + dy(direction)
+          nx, ny = move(x, y, direction)
           return [nx, ny] if valid?(nx, ny)
         end
       end
@@ -403,7 +407,7 @@ module Theseus
     def next_direction
       loop do
         direction = @tries.pop
-        nx, ny = @x + dx(direction), @y + dy(direction)
+        nx, ny = move(@x, @y, direction)
 
         if valid?(nx, ny) && (@cells[@y][@x] & (direction | (direction << UNDER_SHIFT)) == 0)
           if @cells[ny][nx] == 0
@@ -498,7 +502,7 @@ module Theseus
       tries = potential_exits_at(x, y)
       [opposite(@cells[y][x]), *tries].each do |try|
         next if try == @cells[y][x]
-        nx, ny = x + dx(try), y + dy(try)
+        nx, ny = move(x, y, try)
         if valid?(nx, ny)
           opp = opposite(try)
           next if @cells[ny][nx] & (opp << UNDER_SHIFT) != 0
@@ -510,7 +514,7 @@ module Theseus
     end
 
     def weave_allowed?(from_x, from_y, thru_x, thru_y, direction)
-      nx2, ny2 = thru_x + dx(direction), thru_y + dy(direction)
+      nx2, ny2 = move(thru_x, thru_y, direction)
       return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
     end
 
@@ -523,8 +527,9 @@ module Theseus
         apply_move_at(to_x, to_y, direction)
         apply_move_at(to_x, to_y, opposite(direction))
       end
-
-      [to_x + dx(direction), to_y + dy(direction), direction]
+      
+      nx, ny = move(to_x, to_y, direction)
+      [nx, ny, direction]
     end
 
   end

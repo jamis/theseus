@@ -38,7 +38,8 @@ module Theseus
           nil
         else
           @cells[y][x] |= dir
-          @cells[y+dy(dir)][x+dx(dir)] |= opposite(dir)
+          nx, ny = move(x, y, dir)
+          @cells[ny][nx] |= opposite(dir)
           [x,y]
         end
       end
@@ -78,7 +79,7 @@ module Theseus
       unicursal = OrthogonalMaze.new(options.merge(width: @width*2, height: @height*2, prebuilt: true))
 
       set = lambda do |x, y, direction, *recip|
-        nx, ny = x + dx(direction), y + dy(direction)
+        nx, ny = move(x, y, direction)
         unicursal[x,y] |= direction
         unicursal[nx, ny] |= opposite(direction) if recip[0]
       end

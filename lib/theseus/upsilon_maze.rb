@@ -15,7 +15,8 @@ module Theseus
       apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
       apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)
 
-      [to_x + dx(direction), to_y + dy(direction), direction]
+      nx, ny = move(to_x, to_y, direction)
+      [nx, ny, direction]
     end
 
   end

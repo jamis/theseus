@@ -55,7 +55,7 @@ module Theseus
       return false if @cells[thru_y][thru_x] & UNDER != 0
 
       pass_thru = exit_wound(direction, thru_x % 2 != 0)
-      out_x, out_y = thru_x + dx(pass_thru), thru_y + dy(pass_thru)
+      out_x, out_y = move(thru_x, thru_y, pass_thru)
       return valid?(out_x, out_y) && @cells[out_y][out_x] == 0
     end
 
@@ -66,7 +66,8 @@ module Theseus
       apply_move_at(to_x, to_y, pass_thru << UNDER_SHIFT)
       apply_move_at(to_x, to_y, AXIS_MAP[shifted][pass_thru] << UNDER_SHIFT)
 
-      [to_x + dx(pass_thru), to_y + dy(pass_thru), pass_thru]
+      nx, ny = move(to_x, to_y, pass_thru)
+      [nx, ny, pass_thru]
     end
   end
 end

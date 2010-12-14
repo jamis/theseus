@@ -74,7 +74,7 @@ module Theseus
             dir = is_under ? (try >> Maze::UNDER_SHIFT) : try
             opposite = @maze.opposite(dir)
 
-            nx, ny = x + @maze.dx(dir), y + @maze.dy(dir)
+            nx, ny = @maze.move(x, y, dir)
 
             # is the new path an "under" path for the next cell (nx,ny)?
             going_under = @maze[nx, ny] & (opposite << Maze::UNDER_SHIFT) != 0
