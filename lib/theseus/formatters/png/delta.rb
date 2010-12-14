@@ -8,19 +8,19 @@ module Theseus
         def initialize(maze, options={})
           super
 
-          height = options[:outer_padding] * 2 + maze.height * options[:cell_size]
-          width = options[:outer_padding] * 2 + (maze.width + 1) * options[:cell_size] / 2
+          height = @options[:outer_padding] * 2 + maze.height * @options[:cell_size]
+          width = @options[:outer_padding] * 2 + (maze.width + 1) * @options[:cell_size] / 2
 
-          canvas = ChunkyPNG::Image.new(width, height, options[:background])
+          canvas = ChunkyPNG::Image.new(width, height, @options[:background])
 
-          if options[:solution]
+          if @options[:solution]
             solution_grid = Solver.new(maze).solution_grid
           end
 
           maze.height.times do |y|
-            py = options[:outer_padding] + y * options[:cell_size]
+            py = @options[:outer_padding] + y * @options[:cell_size]
             maze.row_length(y).times do |x|
-              px = options[:outer_padding] + x * options[:cell_size] / 2.0
+              px = @options[:outer_padding] + x * @options[:cell_size] / 2.0
               draw_cell(canvas, maze.points_up?(x,y), px, py, maze[x, y], solution_grid ? solution_grid[x][y] : 0)
             end
           end
