@@ -2,10 +2,6 @@
 
 require 'optparse'
 require 'theseus'
-require 'theseus/delta_maze'
-require 'theseus/orthogonal_maze'
-require 'theseus/sigma_maze'
-require 'theseus/upsilon_maze'
 require 'theseus/formatters/png'
 
 type_map = {
@@ -20,6 +16,7 @@ output = "maze"
 sparse = 0
 unicursal = false
 type = "ortho"
+format = :png
 
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 maze_opts = { mask: nil, width: nil, height: nil,
@@ -65,6 +62,10 @@ OptionParser.new do |opts|
 
   opts.on("-o", "--output FILE", "where to save the file(s)") do |f|
     output = f
+  end
+
+  opts.on("-f", "--format FMT", "png, ascii (default #{format})") do |f|
+    format = f.to_sym
   end
 
   opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
@@ -163,17 +164,28 @@ end
 if animate
   step = 0
   maze.generate! do
-    f = "%s-%04d.png" % [output, step]
-    step += 1
-    File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
-    print "."
+    if format == :ascii
+      system "clear"
+      puts maze.to_s(:mode => :utf8_halls)
+      sleep 0.05
+    else
+      f = "%s-%04d.png" % [output, step]
+      step += 1
+      File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
+      print "."
+    end
   end
 
-  f = "%s-%04d.png" % [output, step]
-  File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
-  puts
+  if format == :ascii
+    system "clear"
+    puts maze.to_s(:mode => :utf8_halls)
+  else
+    f = "%s-%04d.png" % [output, step]
+    File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
+    puts
 
-  puts "done, %d frames written to %s-*.png" % [step+1, output]
+    puts "done, %d frames written to %s-*.png" % [step+1, output]
+  end
 else
   maze.generate!
   sparse.times { maze.sparsify! }
@@ -188,6 +200,10 @@ else
     maze = maze.to_unicursal(entrance: enter_at, exit: exit_at)
   end
 
-  File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
-  puts "maze written to #{output}.png"
+  if format == :ascii
+    puts maze.to_s(:mode => :utf8_halls)
+  else
+    File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
+    puts "maze written to #{output}.png"
+  end
 end
