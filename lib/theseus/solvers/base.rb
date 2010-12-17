@@ -22,7 +22,9 @@ module Theseus
       end
 
       def solve
-        step while !solved?
+        while !solved?
+          step
+        end
       end
 
       def each

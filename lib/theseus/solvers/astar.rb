@@ -20,7 +20,7 @@ module Theseus
         end
       end
 
-      attr_reader :open, :solution
+      attr_reader :open
 
       def initialize(maze, a=maze.start, b=maze.finish)
         super
