@@ -103,9 +103,7 @@ module Theseus
     # A short-hand method for creating a new maze object and causing it to
     # be generated, in one step. Returns the newly generated maze.
     def self.generate(options={})
-      maze = new(width, height, options)
-      maze.generate!
-      return maze
+      new(options).generate!
     end
 
     # Creates and returns a new maze object. Note that the maze will _not_
@@ -202,8 +200,8 @@ module Theseus
     # essentially the same as calling #step repeatedly. If a block is given,
     # it will be called after each step.
     def generate!
-      return if generated?
-      yield if block_given? while step
+      yield if block_given? while step unless generated?
+      self
     end
 
     # Creates a new Theseus::Path object based on this maze instance. This can
