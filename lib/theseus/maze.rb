@@ -3,15 +3,22 @@ require 'theseus/path'
 
 module Theseus
   # Theseus::Maze is an abstract class, intended to act solely as a superclass
-  # for specific maze types. See Theseus::OrthogonalMaze for an example.
+  # for specific maze types. Subclasses include OrthogonalMaze, DeltaMaze,
+  # SigmaMaze, and UpsilonMaze.
+  #
+  # Each cell in the maze is a bitfield. The bits that are set indicate which
+  # passages exist leading AWAY from this cell. Bits in the low byte (corresponding
+  # to the PRIMARY bitmask) represent passages on the normal plane. Bits
+  # in the high byte (corresponding to the UNDER bitmask) represent passages
+  # that are passing under this cell. (Under/over passages are controlled via the
+  # #weave setting, and are not supported by all maze types.)
+  #
+  # Mazes are generated using the recursive backtracking algorithm, which is fast,
+  # quite customizable, easily generalized to a variety of different maze types,
+  # and gives generally good results. On the down side, the current implementation
+  # will not regularly generate very challenging mazes, compared to human-built
+  # mazes of the same size.
   class Maze
-
-    # Each cell in the maze is a bitfield. The bits that are set indicate which
-    # passages exist leading AWAY from this cell. Bits in the low byte (corresponding
-    # to the PRIMARY bitmask) represent passages on the normal plane. Bits in the
-    # high byte (corresponding to the UNDER bitmask) represent passages that are
-    # passing under this cell.
-
     N  = 0x01 # North
     S  = 0x02 # South
     E  = 0x04 # East
@@ -65,6 +72,9 @@ module Theseus
     # If :x, the maze will wrap around the left and right edges. If
     # :y, the maze will wrap around the top and bottom edges. If :xy, the
     # maze will wrap around both edges.
+    #
+    # A maze that wraps in a single direction may be mapped onto a cylinder.
+    # A maze that wraps in both x and y may be mapped onto a torus.
     attr_reader :wrap
 
     # A Theseus::Mask (or similar) instance, that is used by the algorithm to
@@ -145,10 +155,14 @@ module Theseus
     #                top-to-bottom. The default is +:none+ (for no wrapping).
     # [:entrance]    A 2-tuple indicating from where the maze is entered.
     #                By default, the maze's entrance will be the upper-left-most
-    #                point.
+    #                point. Note that it may lie outside the bounds of the maze
+    #                by one cell (e.g. [-1,0]), indicating that the entrance
+    #                is on the very edge of the maze.
     # [:exit]        A 2-tuple indicating from where the maze is exited.
     #                By default, the maze's entrance will be the lower-right-most
-    #                point.
+    #                point. Note that it may lie outside the bounds of the maze
+    #                by one cell (e.g. [width,height-1]), indicating that the
+    #                exit is on the very edge of the maze.
     # [:prebuilt]    Sometimes, you may want the new maze to be considered to be
     #                generated, but not actually have anything generated into it.
     #                You can set the +:prebuilt+ parameter to +true+ in this case,
@@ -238,14 +252,19 @@ module Theseus
       new_solver(options).solution
     end
 
+    # Returns the bitfield for the cell at the given (+x+,+y+) coordinate.
     def [](x,y)
       @cells[y][x]
     end
 
+    # Sets the bitfield for the cell at the given (+x+,+y+) coordinate.
     def []=(x,y,value)
       @cells[y][x] = value
     end
 
+    # Completes a single iteration of the maze generation algorithm. Returns
+    # +false+ if the method should not be called again (e.g., the maze has
+    # been completed), and +true+ otherwise.
     def step
       return false if @generated
 
@@ -276,30 +295,57 @@ module Theseus
       return true
     end
 
+    # Returns +true+ if the maze has been generated.
     def generated?
       @generated
     end
 
+    # Since #entrance may be external to the maze, #start returns the cell adjacent to
+    # #entrance that lies within the maze. If #entrance is already internal to the
+    # maze, this method returns #entrance. If #entrance is _not_ adjacent to any
+    # internal cell, this method returns +nil+.
     def start
       adjacent_point(@entrance)
     end
 
+    # Since #exit may be external to the maze, #finish returns the cell adjacent to
+    # #exit that lies within the maze. If #exit is already internal to the
+    # maze, this method returns #exit. If #exit is _not_ adjacent to any
+    # internal cell, this method returns +nil+.
     def finish
       adjacent_point(@exit)
     end
 
+    # Returns an array of the possible exits for the cell at the given coordinates.
+    # Note that this does not take into account boundary conditions: a move in any
+    # of the returned directions may not actually be valid, and should be verified
+    # before being applied.
+    #
+    # This is used primarily by subclasses to allow for different shaped cells
+    # (e.g. hexagonal cells for SigmaMaze, octagonal cells for UpsilonMaze).
     def potential_exits_at(x, y)
       raise NotImplementedError, "subclasses must implement #potential_exits_at"
     end
 
+    # Returns true if the maze may be wrapped in the x direction (left-to-right).
     def wrap_x?
       @wrap == :x || @wrap == :xy
     end
 
+    # Returns true if the maze may be wrapped in the y direction (top-to-bottom).
     def wrap_y?
       @wrap == :y || @wrap == :xy
     end
 
+    # Returns true if the given coordinates are valid within the maze. This will
+    # be the case if:
+    #
+    # 1. The coordinates lie within the maze's bounds, and
+    # 2. The current mask for the maze does not restrict the location.
+    #
+    # If the maze wraps in x, the x coordinate is unconstrained and will be 
+    # mapped (via modulo) to the bounds. Similarly, if the maze wraps in y,
+    # the y coordinate will be unconstrained.
     def valid?(x, y)
       return false if !wrap_y? && (y < 0 || y >= height)
       y %= height
@@ -308,6 +354,14 @@ module Theseus
       return @mask[x, y]
     end
 
+    # Moves the given (+x+,+y+) coordinates a single step in the given
+    # +direction+. If wrapping in either x or y is active, the result will
+    # be mapped to the maze's current bounds via modulo arithmetic. The
+    # resulting coordinates are returned as a 2-tuple.
+    #
+    # Example:
+    #
+    #   x2, y2 = maze.move(x, y, Maze::W)
     def move(x, y, direction)
       nx, ny = x + dx(direction), y + dy(direction)
 
@@ -317,6 +371,8 @@ module Theseus
       [nx, ny]
     end
 
+    # Returns a array of all dead-ends in the maze. Each element of the array
+    # is a 2-tuple containing the coordinates of a dead-end.
     def dead_ends
       dead_ends = []
 
@@ -329,6 +385,8 @@ module Theseus
       dead_ends
     end
 
+    # Removes one cell from all dead-ends in the maze. Each call to this method
+    # removes another level of dead-ends, making the maze increasingly sparse.
     def sparsify!
       dead_ends.each do |(x, y)|
         cell = @cells[y][x]
@@ -352,6 +410,8 @@ module Theseus
       end
     end
 
+    # Returns the direction opposite to the given +direction+. This will work
+    # even if the +direction+ value is in the UNDER bitmask.
     def opposite(direction)
       if direction & UNDER != 0
         opposite(direction >> UNDER_SHIFT) << UNDER_SHIFT
@@ -369,6 +429,8 @@ module Theseus
       end
     end
 
+    # Returns the direction that is the horizontal mirror to the given +direction+.
+    # This will work even if the +direction+ value is in the UNDER bitmask.
     def hmirror(direction)
       if direction & UNDER != 0
         hmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
@@ -385,6 +447,8 @@ module Theseus
       end
     end
 
+    # Returns the direction that is the vertical mirror to the given +direction+.
+    # This will work even if the +direction+ value is in the UNDER bitmask.
     def vmirror(direction)
       if direction & UNDER != 0
         vmirror(direction >> UNDER_SHIFT) << UNDER_SHIFT
@@ -401,7 +465,9 @@ module Theseus
       end
     end
 
-    # a 90-degree clockwise turn
+    # Returns the direction that results by rotating the given +direction+
+    # 90 degrees in the clockwise direction. This will work even if the +direction+
+    # value is in the UNDER bitmask.
     def clockwise(direction)
       if direction & UNDER != 0
         clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
@@ -419,7 +485,9 @@ module Theseus
       end
     end
 
-    # a 90-degree counter-clockwise turn
+    # Returns the direction that results by rotating the given +direction+
+    # 90 degrees in the counter-clockwise direction. This will work even if
+    # the +direction+ value is in the UNDER bitmask.
     def counter_clockwise(direction)
       if direction & UNDER != 0
         counter_clockwise(direction >> UNDER_SHIFT) << UNDER_SHIFT
@@ -437,6 +505,7 @@ module Theseus
       end
     end
 
+    # Returns the change in x implied by the given +direction+.
     def dx(direction)
       case direction
       when E, NE, SE then 1
@@ -445,6 +514,7 @@ module Theseus
       end
     end
 
+    # Returns the change in y implied by the given +direction+.
     def dy(direction)
       case direction
       when S, SE, SW then 1
@@ -453,16 +523,29 @@ module Theseus
       end
     end
 
+    # Returns the number of cells in the given row. This is generally safer
+    # than relying the #width method, since it is theoretically possible for
+    # a maze to have a different number of cells for each of its rows.
     def row_length(row)
       @cells[row].length
     end
 
+    # Returns +true+ if the given cell is a dead-end. This considers only
+    # passages on the PRIMARY plane (the UNDER bits are ignored, because the
+    # current algorithm for generating mazes will never result in a dead-end
+    # that is underneath another passage).
     def dead?(cell)
       raw = cell & PRIMARY
       raw == N || raw == S || raw == E || raw == W ||
         raw == NE || raw == NW || raw == SE || raw == SW
     end
 
+    # If +point+ is already located at a valid point within the maze, this
+    # does nothing. Otherwise, it examines the potential exits from the
+    # given point and looks for the first one that leads immediately to a
+    # valid point internal to the maze. When it finds one, it adds a passage
+    # to that cell leading to +point+. If no such adjacent cell exists, this
+    # method silently does nothing.
     def add_opening_from(point)
       x, y = point
       if valid?(x, y)
@@ -478,10 +561,15 @@ module Theseus
       end
     end
 
+    # If +point+ is already located at a valid point withint he maze, this
+    # simply returns +point+. Otherwise, it examines the potential exits
+    # from the given point and looks for the first one that leads immediately
+    # to a valid point internal to the maze. When it finds one, it returns
+    # that point. If no such point exists, it returns +nil+.
     def adjacent_point(point)
       x, y = point
-      if valid?(x, y)
-        [x, y]
+      if vali]
+        point
       else
         potential_exits_at(x, y).each do |direction|
           nx, ny = move(x, y, direction)
@@ -490,7 +578,7 @@ module Theseus
       end
     end
 
-    # returns the direction of 'to' relative to 'from'. 'to' and 'from'
+    # Returns the direction of +to+ relative to +from+. +to+ and +from+
     # are both points (2-tuples).
     def relative_direction(from, to)
       if from[0] < to[0]
@@ -519,10 +607,14 @@ module Theseus
       end
     end
 
+    # Returns the type of the maze as a string. OrthogonalMaze, for
+    # instance, is reported as "orthogonal".
     def type
       self.class.name[/::(.*?)Maze$/, 1]
     end
 
+    # Returns the maze rendered to a particular format. Supported
+    # formats are current :ascii and :png.
     def to(format, options={})
       case format
       when :ascii then
@@ -536,11 +628,12 @@ module Theseus
       end
     end
 
+    # Returns the maze rendered to a string.
     def to_s(options={})
       to(:ascii, options).to_s
     end
 
-    def inspect
+    def inspect # :nodoc:
       "#<#{self.class.name}:0x%X %dx%d %s>" % [
         object_id, @width, @height,
         generated? ? "generated" : "not generated"]
@@ -548,16 +641,24 @@ module Theseus
 
     private
 
+    # Not all maze types support symmetry. If a subclass supports any of the
+    # symmetry types (or wants to implement its own), it should override this
+    # method.
     def configure_symmetry
       if @symmetry != :none
         raise NotImplementedError, "only :none symmetry is implemented by default"
       end
     end
 
+    # The default grid should suffice for most maze types, but if a subclass
+    # wants a custom grid, it must override this method. Note that the method
+    # MUST always return an Array of rows, with each row being an Array of cells.
     def setup_grid
       Array.new(height) { Array.new(width, 0) }
     end
 
+    # Returns an array of deadends that ought to be braided (removed), based on
+    # the value of the #braid setting.
     def deadends_to_braid
       return [] if @braid.zero?
 
@@ -569,6 +670,7 @@ module Theseus
       ends.sort_by { rand }[0,count]
     end
 
+    # Calculate the default entrance, by looking for the upper-leftmost point.
     def default_entrance
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
@@ -578,6 +680,7 @@ module Theseus
       [0, 0] # if every cell is masked, then 0,0 is as good as any!
     end
 
+    # Calculate the default exit, by looking for the lower-rightmost point.
     def default_exit
       @cells.reverse.each_with_index do |row, y|
         ry = @cells.length - y - 1
@@ -589,6 +692,9 @@ module Theseus
       [0, 0] # if every cell is masked, then 0,0 is as good as any!
     end
 
+    # Returns the next direction that ought to be attempted by the recursive
+    # backtracker. This will also handle the backtracking. If there are no
+    # more directions to attempt, and the stack is empty, this will return +nil+.
     def next_direction
       loop do
         direction = @tries.pop
@@ -614,6 +720,12 @@ module Theseus
       end
     end
 
+    # Applies a move in the given direction to the cell at (x,y). The +direction+
+    # parameter may also be :under, in which case the cell is left-shifted so as
+    # to move the existing passages to the UNDER plane.
+    #
+    # This method also handles the application of symmetrical moves, in the case
+    # where #symmetry has been specified.
     def apply_move_at(x, y, direction)
       if direction == :under
         @cells[y][x] <<= UNDER_SHIFT
@@ -672,6 +784,8 @@ module Theseus
       end
     end
 
+    # Finishes the generation of the maze by adding openings for the entrance
+    # and exit, and determing which dead-ends to braid (if any).
     def finish!
       add_opening_from(@entrance)
       add_opening_from(@exit)
@@ -680,6 +794,9 @@ module Theseus
       @generated = @deadends.empty?
     end
 
+    # If (x,y) is not a dead-end, this does nothing. Otherwise, it extends the
+    # dead-end in some direction until it joins with another passage.
+    #
     # TODO: look for the direction that results in the longest loop.
     # might be kind of spendy, but worth trying, at least.
     def braid(x, y)
@@ -698,6 +815,13 @@ module Theseus
       end
     end
 
+    # Returns +true+ if a weave may be applied at (thru_x,thru_y) when moving
+    # from (from_x,from_y) in +direction+. This will be true if the thru cell
+    # does not already have anything in its UNDER plane, and if the cell
+    # on the far side of thru is valid and blank.
+    #
+    # Subclasses may need to override this method if special interpretations
+    # for +direction+ need to be considered (see SigmaMaze).
     def weave_allowed?(from_x, from_y, thru_x, thru_y, direction)
       nx2, ny2 = move(thru_x, thru_y, direction)
       return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
