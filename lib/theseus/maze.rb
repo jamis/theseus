@@ -5,37 +5,155 @@ module Theseus
   # Theseus::Maze is an abstract class, intended to act solely as a superclass
   # for specific maze types. See Theseus::OrthogonalMaze for an example.
   class Maze
-    N  = 0x01
-    S  = 0x02
-    E  = 0x04
-    W  = 0x08
-    NW = 0x10
-    NE = 0x20
-    SW = 0x40
-    SE = 0x80
 
+    # Each cell in the maze is a bitfield. The bits that are set indicate which
+    # passages exist leading AWAY from this cell. Bits in the low byte (corresponding
+    # to the PRIMARY bitmask) represent passages on the normal plane. Bits in the
+    # high byte (corresponding to the UNDER bitmask) represent passages that are
+    # passing under this cell.
+
+    N  = 0x01 # North
+    S  = 0x02 # South
+    E  = 0x04 # East
+    W  = 0x08 # West
+    NW = 0x10 # Northwest
+    NE = 0x20 # Northeast
+    SW = 0x40 # Southwest
+    SE = 0x80 # Southeast
+
+    # bitmask identifying directional bits on the primary plane
     PRIMARY = 0x00FF
+
+    # bitmask identifying directional bits under the primary plane
     UNDER   = 0xFF00
 
+    # The size of the PRIMARY bitmask (e.g. how far to the left the
+    # UNDER bitmask is shifted).
     UNDER_SHIFT = 8
 
+    # The width of the maze (number of columns).
+    #
+    # In general, it is safest to use the #row_length method for a particular
+    # row, since it is theoretically possible for a maze subclass to describe
+    # a different width for each row.
     attr_reader :width
+
+    # The height of the maze (number of rows).
     attr_reader :height
+
+    # An integer between 0 and 100 (inclusive). 0 means passages will only
+    # change direction when they encounter a barrier they cannot move through
+    # (or under). 100 means that as passages are built, a new direction will
+    # always be randomly chosen for each step of the algorithm.
     attr_reader :randomness
+
+    # An integer between 0 and 100 (inclusive). 0 means passages will never
+    # move over or under existing passages. 100 means whenever possible,
+    # passages will move over or under existing passages. Note that not all
+    # maze types support weaving.
     attr_reader :weave
+
+    # An integer between 0 and 100 (inclusive), signifying the percentage
+    # of deadends in the maze that will be extended in some direction until
+    # they join with an existing passage. This will create loops in the
+    # graph. Thus, 0 is a "perfect" maze (with no loops), and 100 is a
+    # maze that is totally multiply-connected, with no dead-ends.
     attr_reader :braid
+
+    # One of :none, :x, :y, or :xy, indicating which boundaries the maze
+    # should wrap around. The default is :none, indicating no wrapping.
+    # If :x, the maze will wrap around the left and right edges. If
+    # :y, the maze will wrap around the top and bottom edges. If :xy, the
+    # maze will wrap around both edges.
     attr_reader :wrap
+
+    # A Theseus::Mask (or similar) instance, that is used by the algorithm to
+    # determine which cells in the space are allowed. This lets you create
+    # mazes that fill shapes, or flow around patterns.
     attr_reader :mask
+
+    # One of :none, :x, :y, :xy, or :radial. Note that not all maze types
+    # support symmetry. The :x symmetry means the maze will be mirrored
+    # across the x axis. Similarly, :y symmetry means the maze will be
+    # mirrored across the y axis. :xy symmetry causes the maze to be
+    # mirrored across both axes, and :radial symmetry causes the maze to
+    # be mirrored radially about the center of the maze.
     attr_reader :symmetry
+
+    # A 2-tuple (array) indicating the x and y coordinates where the maze
+    # should be entered. This is used primarly when generating the solution
+    # to the maze, and generally defaults to the upper-left corner.
     attr_reader :entrance
+
+    # A 2-tuple (array) indicating the x and y coordinates where the maze
+    # should be exited. This is used primarly when generating the solution
+    # to the maze, and generally defaults to the lower-right corner.
     attr_reader :exit
 
+    # A short-hand method for creating a new maze object and causing it to
+    # be generated, in one step. Returns the newly generated maze.
     def self.generate(options={})
       maze = new(width, height, options)
       maze.generate!
       return maze
     end
 
+    # Creates and returns a new maze object. Note that the maze will _not_
+    # be generated; the maze is initially blank.
+    #
+    # Many options are supported:
+    #
+    # [:width]       The number of columns in the maze. Note that different
+    #                maze types count columns and rows differently; you'll
+    #                want to see individual maze types for more info.
+    # [:height]      The number of rows in the maze.
+    # [:symmetry]    The symmetry to be used when generating the maze. This
+    #                defaults to +:none+, but may also be +:x+ (to have the
+    #                maze mirrored across the x-axis), +:y+ (to mirror the
+    #                maze across the y-axis), +:xy+ (to mirror across both
+    #                axes simultaneously), and +:radial+ (to mirror the maze
+    #                radially about the center). Some symmetry types may
+    #                result in loops being added to the maze, regardless of
+    #                the braid value (see the +:braid+ parameter).
+    #                (NOTE: not all maze types support symmetry equally.)
+    # [:randomness]  An integer between 0 and 100 (inclusive) indicating how
+    #                randomly the maze is generated. A 0 means that the maze
+    #                passages will prefer to go straight whenever possible.
+    #                A 100 means the passages will choose random directions
+    #                as often as possible.
+    # [:mask]        An instance of Theseus::Mask (or something that acts
+    #                similarly). This can be used to constrain the maze so that
+    #                it fills or avoids specific areas, so that shapes and
+    #                patterns can be made.
+    # [:weave]       An integer between 0 and 100 (inclusive) indicating how
+    #                frequently passages move under or over other passages.
+    #                A 0 means the passages will never move over/under other
+    #                passages, while a 100 means they will do so as often
+    #                as possible. (NOTE: not all maze types support weaving.)
+    # [:braid]       An integer between 0 and 100 (inclusive) representing
+    #                the percentage of dead-ends that should be removed after
+    #                the maze has been generated. Dead-ends are removed by
+    #                extending them in some direction until they join with
+    #                another passage. This will introduce loops into the maze,
+    #                making it "multiply-connected". A braid value of 0 will
+    #                always result in a "perfect" maze (with no loops), while
+    #                a value of 100 will result in a maze with no dead-ends.
+    # [:wrap]        Indicates which edges of the maze should wrap around.
+    #                +:x+ will cause the left and right edges to wrap, and
+    #                +:y+ will cause the top and bottom edges to wrap. You
+    #                can specify +:xy+ to wrap both left-to-right and
+    #                top-to-bottom. The default is +:none+ (for no wrapping).
+    # [:entrance]    A 2-tuple indicating from where the maze is entered.
+    #                By default, the maze's entrance will be the upper-left-most
+    #                point.
+    # [:exit]        A 2-tuple indicating from where the maze is exited.
+    #                By default, the maze's entrance will be the lower-right-most
+    #                point.
+    # [:prebuilt]    Sometimes, you may want the new maze to be considered to be
+    #                generated, but not actually have anything generated into it.
+    #                You can set the +:prebuilt+ parameter to +true+ in this case,
+    #                allowing you to then set the contents of the maze by hand,
+    #                using the #[]= method.
     def initialize(options={})
       @width = (options[:width] || 10).to_i
       @height = (options[:height] || 10).to_i
@@ -66,14 +184,40 @@ module Theseus
       @generated = options[:prebuilt]
     end
 
+    # Generates the maze if it has not already been generated. This is
+    # essentially the same as calling #step repeatedly. If a block is given,
+    # it will be called after each step.
     def generate!
+      return if generated?
       yield if block_given? while step
     end
 
+    # Creates a new Theseus::Path object based on this maze instance. This can
+    # be used to (for instance) create special areas of the maze or routes through
+    # the maze that you want to color specially. The following demonstrates setting
+    # a particular cell in the maze to a light-purple color:
+    #
+    #   path = maze.new_path(color: 0xff7fffff)
+    #   path.set([5,5])
+    #   maze.to(:png, paths: [path])
     def new_path(meta={})
       Path.new(self, meta)
     end
 
+    # Instantiates and returns a new solver instance which encapsulates a
+    # solution algorithm. The options may contain the following keys:
+    #
+    # [:type] This defaults to +:backtracker+ (for the Theseus::Solvers::Backtracker
+    #         solver), but may also be set to +:astar+ (for the Theseus::Solvers::Astar
+    #         solver).
+    # [:a]    A 2-tuple (defaulting to #start) that says where in the maze the
+    #         solution should begin.
+    # [:b]    A 2-tuple (defaulting to #finish) that says where in the maze the
+    #         solution should finish.
+    #
+    # The returned solver will not yet have generated the solution. Use
+    # Theseus::Solvers::Base#solve or Theseus::Solvers::Base#step to generate the
+    # solution.
     def new_solver(options={})
       type = options[:type] || :backtracker
 
@@ -86,6 +230,10 @@ module Theseus
       klass.new(self, a, b)
     end
 
+    # Returns the solution for the maze as an array of 2-tuples, each indicating
+    # a cell (in sequence) leading from the start to the finish.
+    #
+    # See #new_solver for a description of the supported options.
     def solve(options={})
       new_solver(options).solution
     end
