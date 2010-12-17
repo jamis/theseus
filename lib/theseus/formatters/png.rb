@@ -28,10 +28,25 @@ module Theseus
         [:background, :wall_color, :cell_color, :solution_color].each do |c|
           @options[c] = ChunkyPNG::Color.from_hex(@options[c]) unless Fixnum === @options[c]
         end
+
+        @paths = @options[:paths] || []
+
+        if @options[:solution]
+          path = maze.new_solver(type: @options[:solution]).path(color: @options[:solution_color])
+          @paths = [path, *@paths]
+        end
       end
 
       def to_blob
         @blob
+      end
+
+      def color_at(pt, direction=nil)
+        @paths.each do |path|
+          return path[:color] if direction ? path.path?(pt, direction) : path.set?(pt)
+        end
+
+        return @options[:cell_color]
       end
 
       # returns the projection of point p onto the line that passes through a and c

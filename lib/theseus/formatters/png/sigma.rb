@@ -1,4 +1,3 @@
-require 'theseus/solver'
 require 'theseus/formatters/png'
 
 module Theseus
@@ -13,27 +12,21 @@ module Theseus
 
           canvas = ChunkyPNG::Image.new(width, height, @options[:background])
 
-          if @options[:solution]
-            solution_grid = Solver.new(maze).solution_grid
-          end
-
           maze.height.times do |y|
             py = @options[:outer_padding] + y * @options[:cell_size]
             maze.row_length(y).times do |x|
               px = @options[:outer_padding] + x * 3 * @options[:cell_size] / 4.0
               shifted = (x % 2 != 0)
               dy = shifted ? (@options[:cell_size] / 2.0) : 0
-              draw_cell(canvas, shifted, px, py+dy, maze[x, y], solution_grid ? solution_grid[x][y] : 0)
+              draw_cell(canvas, [x, y], shifted, px, py+dy, maze[x, y])
             end
           end
 
           @blob = canvas.to_blob
         end
 
-        def draw_cell(canvas, shifted, x, y, cell, solution)
+        def draw_cell(canvas, point, shifted, x, y, cell)
           return if cell == 0
-
-          color = (solution & cell != 0) ? :solution_color : :cell_color
 
           size = options[:cell_size] - options[:cell_padding] * 2
           s4 = size / 4.0
@@ -47,7 +40,7 @@ module Theseus
           p5 = [p1[0], p4[1]]
           p6 = [x + options[:cell_padding], p3[1]]
 
-          fill_poly(canvas, [p1, p2, p3, p4, p5, p6], options[color])
+          fill_poly(canvas, [p1, p2, p3, p4, p5, p6], color_at(point))
 
           n  = Maze::N
           s  = Maze::S
@@ -60,7 +53,7 @@ module Theseus
 
           if cell & any[s] != 0
             r1, r2 = p5, move(p4, 0, options[:cell_padding]*2)
-            fill_rect(canvas, r1[0], r1[1], r2[0], r2[1], options[(solution & any[s] == 0) ? :cell_color : :solution_color])
+            fill_rect(canvas, r1[0], r1[1], r2[0], r2[1], color_at(point, any[s]))
             line(canvas, p5, move(p5, 0, options[:cell_padding]*2), options[:wall_color])
             line(canvas, p4, move(p4, 0, options[:cell_padding]*2), options[:wall_color])
           end
@@ -71,7 +64,7 @@ module Theseus
             ne_p5 = [ne_x + options[:cell_padding] + s4, ne_y + options[:cell_size] - options[:cell_padding]]
             ne_p6 = [ne_x + options[:cell_padding], ne_y + options[:cell_size] * 0.5]
             r1, r2, r3, r4 = p2, p3, ne_p5, ne_p6
-            fill_poly(canvas, [r1, r2, r3, r4], options[(solution & any[ne] == 0) ? :cell_color : :solution_color])
+            fill_poly(canvas, [r1, r2, r3, r4], color_at(point, any[ne]))
             line(canvas, r1, r4, options[:wall_color])
             line(canvas, r2, r3, options[:wall_color])
           end
@@ -82,7 +75,7 @@ module Theseus
             se_p1 = [se_x + s4 + options[:cell_padding], se_y + options[:cell_padding]]
             se_p6 = [se_x + options[:cell_padding], se_y + options[:cell_size] * 0.5]
             r1, r2, r3, r4 = p3, p4, se_p6, se_p1
-            fill_poly(canvas, [r1, r2, r3, r4], options[(solution & any[se] == 0) ? :cell_color : :solution_color])
+            fill_poly(canvas, [r1, r2, r3, r4], color_at(point, any[se]))
             line(canvas, r1, r4, options[:wall_color])
             line(canvas, r2, r3, options[:wall_color])
           end

@@ -1,7 +1,9 @@
 require 'theseus/mask'
-require 'theseus/solver'
+require 'theseus/path'
 
 module Theseus
+  # Theseus::Maze is an abstract class, intended to act solely as a superclass
+  # for specific maze types. See Theseus::OrthogonalMaze for an example.
   class Maze
     N  = 0x01
     S  = 0x02
@@ -66,6 +68,26 @@ module Theseus
 
     def generate!
       yield if block_given? while step
+    end
+
+    def new_path(meta={})
+      Path.new(self, meta)
+    end
+
+    def new_solver(options={})
+      type = options[:type] || :backtracker
+
+      require "theseus/solvers/#{type}"
+      klass = Theseus::Solvers.const_get(type.to_s.capitalize)
+
+      a = options[:a] || start
+      b = options[:b] || finish
+
+      klass.new(self, a, b)
+    end
+
+    def solve(options={})
+      new_solver(options).solution
     end
 
     def [](x,y)
@@ -347,10 +369,6 @@ module Theseus
         # same point!
         nil
       end
-    end
-
-    def solve(a=start, b=finish)
-      Solver.new(self, a, b).solution
     end
 
     def type

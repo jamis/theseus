@@ -35,7 +35,7 @@ OptionParser.new do |opts|
     maze_opts[:height] = h
   end
 
-  opts.on("-m", "--mask [FILE]", "png file to use as mask") do |m|
+  opts.on("-m", "--mask FILE", "png file to use as mask") do |m|
     case m
     when /^triangle:(\d+)$/ then maze_opts[:mask] = Theseus::TriangleMask.new($1.to_i)
     else maze_opts[:mask] = Theseus::Mask.from_png(m)
@@ -57,8 +57,8 @@ OptionParser.new do |opts|
     format = f.to_sym
   end
 
-  opts.on("-v", "--[no-]solve", "whether to display the solution of the maze") do |s|
-    png_opts[:solution] = s
+  opts.on("-v", "--solve [METHOD]", "whether to display the solution of the maze.", "METHOD is either `backtracker' (the default) or `astar'") do |s|
+    png_opts[:solution] = (s || :backtracker).to_sym
   end
 
   opts.separator ""
