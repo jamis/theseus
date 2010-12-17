@@ -163,10 +163,10 @@ end
 
 if animate
   abort "sparse cannot be used for animated mazes" if sparse > 0
-  abort "cannot specify both solve and animate" if png_opts[:solution]
   abort "cannot animate unicursal mazes" if unicursal
 
   png_opts[:background] = ChunkyPNG::Color.from_hex(png_opts[:background]) unless Fixnum === png_opts[:background]
+  solution = png_opts.delete(:solution)
 
   if png_opts[:background] & 0xFF != 0xFF
     warn "if you intend to make a movie out of the frames from the animation,"
@@ -210,8 +210,22 @@ if animate
   else
     f = "%s-%04d.png" % [output, step]
     File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
-    puts
+    print "."
 
+    if solution
+      solver = maze.new_solver(type: solution)
+
+      while solver.step
+        path = solver.path(color: png_opts[:solution_color])
+
+        step += 1
+        f = "%s-%04d.png" % [output, step]
+        File.open(f, "w") { |io| io.write(maze.to(:png, png_opts.merge(paths: [path]))) }
+        print "."
+      end
+    end
+
+    puts
     puts "done, %d frames written to %s-*.png" % [step+1, output]
   end
 else

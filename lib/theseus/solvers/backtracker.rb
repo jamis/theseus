@@ -11,6 +11,10 @@ module Theseus
 
       VISIT_MASK = { false => 1, true => 2 }
 
+      def current_solution
+        @stack[1..-1].map { |item| item[0] }
+      end
+
       def step
         if @stack == [:fail]
           return false

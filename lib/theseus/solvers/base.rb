@@ -25,6 +25,8 @@ module Theseus
         while !solved?
           step
         end
+
+        self
       end
 
       def each
@@ -36,21 +38,19 @@ module Theseus
       end
 
       def path(options={})
-        @path ||= begin
-          path = @maze.new_path(options)
-          prev = @maze.entrance
+        path = @maze.new_path(options)
+        prev = @maze.entrance
 
-          solution.each do |pt|
-            how = path.link(prev, pt)
-            path.set(pt, how)
-            prev = pt
-          end
-
-          how = path.link(prev, @maze.exit)
-          path.set(@maze.exit, how)
-
-          path
+        (@solution || current_solution).each do |pt|
+          how = path.link(prev, pt)
+          path.set(pt, how)
+          prev = pt
         end
+
+        how = path.link(prev, @maze.exit)
+        path.set(@maze.exit, how)
+
+        path
       end
     end
   end

@@ -28,6 +28,10 @@ module Theseus
         @visits = Array.new(@maze.height) { Array.new(@maze.width, 0) }
       end
 
+      def current_solution
+        @open.history + [@open.point]
+      end
+
       def step
         return false unless @open
 
