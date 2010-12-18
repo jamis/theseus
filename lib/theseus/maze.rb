@@ -566,7 +566,7 @@ module Theseus
     # that point. If no such point exists, it returns +nil+.
     def adjacent_point(point)
       x, y = point
-      if vali]
+      if valid?(x, y)
         point
       else
         potential_exits_at(x, y).each do |direction|
@@ -612,7 +612,8 @@ module Theseus
     end
 
     # Returns the maze rendered to a particular format. Supported
-    # formats are current :ascii and :png.
+    # formats are currently :ascii and :png. The +options+ hash is passed
+    # through to the formatter.
     def to(format, options={})
       case format
       when :ascii then

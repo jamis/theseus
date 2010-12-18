@@ -3,15 +3,25 @@ require 'theseus/formatters/ascii'
 module Theseus
   module Formatters
     class ASCII
+      # Renders a DeltaMaze to an ASCII representation, using 4 characters
+      # horizontally and 2 characters vertically to represent a single cell.
+      #
+      #          __
+      #        /\  /
+      #       /__\/
+      #      /\  /\ 
+      #     /__\/__\ 
+      #    /\  /\  /\ 
+      #   /__\/__\/__\ 
+      #
+      # You shouldn't ever need to instantiate this class directly. Rather, use
+      # DeltaMaze#to(:ascii) (or DeltaMaze#to_s to get the string directly).
       class Delta < ASCII
-        #          __
-        #        /\  /
-        #       /__\/
-        #      /\  /\
-        #     /__\/__\
-        #    /\  /\  /\
-        #   /__\/__\/__\
+        # Returns a new Delta canvas for the given maze (which should be an
+        # instance of DeltaMaze). The +options+ parameter is not used.
         #
+        # The returned object will be fully initialized, containing an ASCII
+        # representation of the given DeltaMaze.
         def initialize(maze, options={})
           super((maze.width + 1) * 2, maze.height * 2 + 1)
 

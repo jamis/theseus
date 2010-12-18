@@ -3,18 +3,26 @@ require 'theseus/formatters/ascii'
 module Theseus
   module Formatters
     class ASCII
-      #   0123456789012
-      # 0  _   _   _
-      # 1 / \_/ \_/ \_
-      # 2 \_/ \_/ \_/ \
-      # 3 / \_/ \_/ \_/
-      # 4 \_/ \_/ \_/ \
-      # 5 / \_/ \_/ \_/
-      # 6 \_/ \_/ \_/ \
-      # 7 / \_/ \_/ \_/
-      # 8 \_/ \_/ \_/ \
+      # Renders a SigmaMaze to an ASCII representation, using 3 characters
+      # horizontally and 3 characters vertically to represent a single cell.
+      #    _   _   _
+      #   / \_/ \_/ \_
+      #   \_/ \_/ \_/ \ 
+      #   / \_/ \_/ \_/
+      #   \_/ \_/ \_/ \ 
+      #   / \_/ \_/ \_/
+      #   \_/ \_/ \_/ \ 
+      #   / \_/ \_/ \_/
+      #   \_/ \_/ \_/ \ 
       #
+      # You shouldn't ever need to instantiate this class directly. Rather, use
+      # SigmaMaze#to(:ascii) (or SigmaMaze#to_s to get the string directly).
       class Sigma < ASCII
+        # Returns a new Sigma canvas for the given maze (which should be an
+        # instance of SigmaMaze). The +options+ parameter is not used.
+        #
+        # The returned object will be fully initialized, containing an ASCII
+        # representation of the given SigmaMaze.
         def initialize(maze, options={})
           super(maze.width * 2 + 2, maze.height * 2 + 2)
 

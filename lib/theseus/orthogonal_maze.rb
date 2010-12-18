@@ -1,14 +1,28 @@
 require 'theseus/maze'
 
 module Theseus
+  # An orthogonal maze is one in which the field is tesselated into squares. This is
+  # probably the type of maze that most people think of, when they think of mazes.
+  #
+  # The orthogonal maze implementation in Theseus is the most complete, supporting
+  # weaving as well as all four symmetry types. You can even convert any "perfect"
+  # (no loops) orthogonal maze to a "unicursal" maze. (Unicursal means "one course",
+  # and refers to a maze that has no junctions, only a single path that takes you
+  # through every cell in the maze exactly once.)
+  #
+  #   maze = Theseus::OrthogonalMaze.generate(width: 10)
+  #   puts maze
   class OrthogonalMaze < Maze
-    DIRECTIONS = [N, S, E, W]
-
-    def potential_exits_at(x, y)
-      DIRECTIONS
+    def potential_exits_at(x, y) #:nodoc:
+      [N, S, E, W]
     end
 
-    def finish!
+    # Extends Maze#finish! to make sure symmetrical mazes are properly closed.
+    #--
+    # Eventually, this would be good to generalize somehow, and make available to
+    # the other maze types.
+    #++
+    def finish! #:nodoc:
       # for symmetrical mazes, if the size of the maze in the direction of reflection is
       # even, then we have two distinct halves that need to be joined in order for the
       # maze to be fully connected.
@@ -75,6 +89,22 @@ module Theseus
       super
     end
 
+    # Takes the current orthogonal maze and converts it into a unicursal maze. A unicursal
+    # maze is one with only a single path, and no dead-ends or junctions. Such mazes are
+    # more properly called "labyrinths". Note that although this method will always return
+    # a new OrthogonalMaze instance, it is not guaranteed to be a valid maze unless the
+    # current maze is "perfect" (not braided, containing no loops).
+    #
+    # The resulting unicursal maze will be twice as wide and twice as high as the original
+    # maze.
+    #
+    # The +options+ hash can be used to specify the <code>:entrance</code> and
+    # <code>:exit</code> points for the resulting maze. Currently, both the entrance and
+    # the exit must be adjacent.
+    #
+    # The process of converting an orthogonal maze to a unicursal maze is straightforward;
+    # take the maze, and divide all passages in half down the middle, making two passages.
+    # Dead-ends become a u-turn, etc. This is why the maze increases in size.
     def to_unicursal(options={})
       unicursal = OrthogonalMaze.new(options.merge(width: @width*2, height: @height*2, prebuilt: true))
 
@@ -156,7 +186,7 @@ module Theseus
 
     private
 
-    def configure_symmetry
+    def configure_symmetry #:nodoc:
       if @symmetry == :radial && @width != @height
         raise ArgumentError, "radial symmetrial is only possible for mazes where width == height"
       end

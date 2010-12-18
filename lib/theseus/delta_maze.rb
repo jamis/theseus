@@ -4,21 +4,22 @@ module Theseus
   # A "delta" maze is one in which the field is tesselated into triangles. Thus,
   # each cell has three potential exits: east, west, and either north or south
   # (depending on the orientation of the cell).
-  #       __  __  __
-  #     /\  /\  /\  /
-  #    /__\/__\/__\/
-  #    \  /\  /\  /\
-  #     \/__\/__\/__\
-  #     /\  /\  /\  /
-  #    /__\/__\/__\/
-  #    \  /\  /\  /\
-  #     \/__\/__\/__\
   #
-  # This implementation of delta mazes does *not* currently support the following
-  # features:
+  #      __  __  __
+  #    /\  /\  /\  /
+  #   /__\/__\/__\/
+  #   \  /\  /\  /\ 
+  #    \/__\/__\/__\ 
+  #    /\  /\  /\  /
+  #   /__\/__\/__\/
+  #   \  /\  /\  /\ 
+  #    \/__\/__\/__\ 
+  #   
   #
-  # * Weaving. The #weave option must be 0.
-  # * Symmetry. The only supported #symmetry option is +:none+.
+  # Delta mazes in Theseus do not support either weaving, or symmetry.
+  #
+  #   maze = Theseus::DeltaMaze.generate(width: 10)
+  #   puts maze
   class DeltaMaze < Maze
     def initialize(options={}) #:nodoc:
       super

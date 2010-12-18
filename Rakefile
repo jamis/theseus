@@ -1,5 +1,6 @@
 require 'rake'
 require 'rake/gempackagetask'
+require 'rake/rdoctask'
 
 spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::RUBY
@@ -19,4 +20,8 @@ end
 Rake::GemPackageTask.new(spec) do |pkg|
   pkg.need_zip = true
   pkg.need_tar = true
+end
+
+Rake::RDocTask.new do |rd|
+  rd.rdoc_files.include("lib/**/*.rb")
 end
