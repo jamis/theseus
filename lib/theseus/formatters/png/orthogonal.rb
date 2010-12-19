@@ -3,7 +3,15 @@ require 'theseus/formatters/png'
 module Theseus
   module Formatters
     class PNG
+      # Renders an OrthogonalMaze to a PNG canvas.
+      #
+      # You will almost never access this class directly. Instead, use
+      # OrthogonalMaze#to(:png, options) to return the raw PNG data directly.
       class Orthogonal < PNG
+        # Create and return a fully initialized PNG::Orthogonal object, with the
+        # maze rendered. To get the maze data, call #to_blob.
+        #
+        # See Theseus::Formatters::PNG for a list of all supported options.
         def initialize(maze, options={})
           super
 
@@ -28,7 +36,9 @@ module Theseus
           @blob = canvas.to_blob
         end
 
-        def draw_cell(canvas, point, x, y, cell)
+        private
+
+        def draw_cell(canvas, point, x, y, cell) #:nodoc:
           return if cell == 0
 
           fill_rect(canvas, x + @d1, y + @d1, x + @d2, y + @d2, color_at(point))
@@ -48,7 +58,7 @@ module Theseus
           draw_horizontal(canvas, x + options[:cell_size], y, -1, east || east_under, !east || east_under, color_at(point, ANY_E))
         end
 
-        def draw_vertical(canvas, x, y, direction, corridor, wall, color)
+        def draw_vertical(canvas, x, y, direction, corridor, wall, color) #:nodoc:
           if corridor
             fill_rect(canvas, x + @d1, y, x + @d2, y + @d1 * direction, color)
             fill_rect(canvas, x + @d1 - @w1, y - (@w1 * direction), x + @d1 + @w2, y + (@d1 + @w2) * direction, options[:wall_color])
@@ -60,7 +70,7 @@ module Theseus
           end
         end
 
-        def draw_horizontal(canvas, x, y, direction, corridor, wall, color)
+        def draw_horizontal(canvas, x, y, direction, corridor, wall, color) #:nodoc:
           if corridor
             fill_rect(canvas, x, y + @d1, x + @d1 * direction, y + @d2, color)
             fill_rect(canvas, x - (@w1 * direction), y + @d1 - @w1, x + (@d1 + @w2) * direction, y + @d1 + @w2, options[:wall_color])

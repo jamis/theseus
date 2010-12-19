@@ -643,7 +643,7 @@ module Theseus
     # Not all maze types support symmetry. If a subclass supports any of the
     # symmetry types (or wants to implement its own), it should override this
     # method.
-    def configure_symmetry
+    def configure_symmetry #:nodoc:
       if @symmetry != :none
         raise NotImplementedError, "only :none symmetry is implemented by default"
       end
@@ -652,13 +652,13 @@ module Theseus
     # The default grid should suffice for most maze types, but if a subclass
     # wants a custom grid, it must override this method. Note that the method
     # MUST always return an Array of rows, with each row being an Array of cells.
-    def setup_grid
+    def setup_grid #:nodoc:
       Array.new(height) { Array.new(width, 0) }
     end
 
     # Returns an array of deadends that ought to be braided (removed), based on
     # the value of the #braid setting.
-    def deadends_to_braid
+    def deadends_to_braid #:nodoc:
       return [] if @braid.zero?
 
       ends = dead_ends
@@ -670,7 +670,7 @@ module Theseus
     end
 
     # Calculate the default entrance, by looking for the upper-leftmost point.
-    def default_entrance
+    def default_entrance #:nodoc:
       @cells.each_with_index do |row, y|
         row.each_with_index do |cell, x|
           return [x-1, y] if @mask[x, y]
@@ -680,7 +680,7 @@ module Theseus
     end
 
     # Calculate the default exit, by looking for the lower-rightmost point.
-    def default_exit
+    def default_exit #:nodoc:
       @cells.reverse.each_with_index do |row, y|
         ry = @cells.length - y - 1
         row.reverse.each_with_index do |cell, x|
@@ -694,7 +694,7 @@ module Theseus
     # Returns the next direction that ought to be attempted by the recursive
     # backtracker. This will also handle the backtracking. If there are no
     # more directions to attempt, and the stack is empty, this will return +nil+.
-    def next_direction
+    def next_direction #:nodoc:
       loop do
         direction = @tries.pop
         nx, ny = move(@x, @y, direction)
@@ -725,7 +725,7 @@ module Theseus
     #
     # This method also handles the application of symmetrical moves, in the case
     # where #symmetry has been specified.
-    def apply_move_at(x, y, direction)
+    def apply_move_at(x, y, direction) #:nodoc:
       if direction == :under
         @cells[y][x] <<= UNDER_SHIFT
       else
@@ -740,7 +740,7 @@ module Theseus
       end
     end
 
-    def move_symmetrically_in_x(x, y, direction)
+    def move_symmetrically_in_x(x, y, direction) #:nodoc:
       row_width = @cells[y].length
       if direction == :under
         @cells[y][row_width - x - 1] <<= UNDER_SHIFT
@@ -749,7 +749,7 @@ module Theseus
       end
     end
 
-    def move_symmetrically_in_y(x, y, direction)
+    def move_symmetrically_in_y(x, y, direction) #:nodoc:
       if direction == :under
         @cells[@cells.length - y - 1][x] <<= UNDER_SHIFT
       else
@@ -757,7 +757,7 @@ module Theseus
       end
     end
 
-    def move_symmetrically_in_xy(x, y, direction)
+    def move_symmetrically_in_xy(x, y, direction) #:nodoc:
       row_width = @cells[y].length
       if direction == :under
         @cells[y][row_width - x - 1] <<= UNDER_SHIFT
@@ -770,7 +770,7 @@ module Theseus
       end
     end
 
-    def move_symmetrically_radially(x, y, direction)
+    def move_symmetrically_radially(x, y, direction) #:nodoc:
       row_width = @cells[y].length
       if direction == :under
         @cells[@cells.length - x - 1][y] <<= UNDER_SHIFT
@@ -785,7 +785,7 @@ module Theseus
 
     # Finishes the generation of the maze by adding openings for the entrance
     # and exit, and determing which dead-ends to braid (if any).
-    def finish!
+    def finish! #:nodoc:
       add_opening_from(@entrance)
       add_opening_from(@exit)
 
@@ -798,7 +798,7 @@ module Theseus
     #
     # TODO: look for the direction that results in the longest loop.
     # might be kind of spendy, but worth trying, at least.
-    def braid(x, y)
+    def braid(x, y) #:nodoc:
       return unless dead?(@cells[y][x])
       tries = potential_exits_at(x, y)
       [opposite(@cells[y][x]), *tries].each do |try|
@@ -821,12 +821,12 @@ module Theseus
     #
     # Subclasses may need to override this method if special interpretations
     # for +direction+ need to be considered (see SigmaMaze).
-    def weave_allowed?(from_x, from_y, thru_x, thru_y, direction)
+    def weave_allowed?(from_x, from_y, thru_x, thru_y, direction) #:nodoc:
       nx2, ny2 = move(thru_x, thru_y, direction)
       return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
     end
 
-    def perform_weave(from_x, from_y, to_x, to_y, direction)
+    def perform_weave(from_x, from_y, to_x, to_y, direction) #:nodoc:
       if rand(2) == 0 # move under existing passage
         apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
         apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)

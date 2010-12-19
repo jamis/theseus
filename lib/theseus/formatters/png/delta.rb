@@ -3,7 +3,16 @@ require 'theseus/formatters/png'
 module Theseus
   module Formatters
     class PNG
+      # Renders a DeltaMaze to a PNG canvas. Does not currently support the
+      # +:wall_width+ option.
+      #
+      # You will almost never access this class directly. Instead, use
+      # DeltaMaze#to(:png, options) to return the raw PNG data directly.
       class Delta < PNG
+        # Create and return a fully initialized PNG::Delta object, with the
+        # maze rendered. To get the maze data, call #to_blob.
+        #
+        # See Theseus::Formatters::PNG for a list of all supported options.
         def initialize(maze, options={})
           super
 
@@ -23,7 +32,9 @@ module Theseus
           @blob = canvas.to_blob
         end
 
-        def draw_cell(canvas, point, up, x, y, cell)
+        private
+
+        def draw_cell(canvas, point, up, x, y, cell) #:nodoc:
           return if cell == 0
 
           p1 = [x + options[:cell_size] / 2.0, up ? (y + options[:cell_padding]) : (y + options[:cell_size] - options[:cell_padding])]

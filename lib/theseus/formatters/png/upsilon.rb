@@ -3,7 +3,16 @@ require 'theseus/formatters/png'
 module Theseus
   module Formatters
     class PNG
+      # Renders a UpsilonMaze to a PNG canvas. Does not currently support the
+      # +:wall_width+ option.
+      #
+      # You will almost never access this class directly. Instead, use
+      # UpsilonMaze#to(:png, options) to return the raw PNG data directly.
       class Upsilon < PNG
+        # Create and return a fully initialized PNG::Upsilon object, with the
+        # maze rendered. To get the maze data, call #to_blob.
+        #
+        # See Theseus::Formatters::PNG for a list of all supported options.
         def initialize(maze, options={})
           super
 
@@ -35,7 +44,9 @@ module Theseus
           @blob = canvas.to_blob
         end
 
-        def draw_octogon_cell(canvas, point, x, y, cell, metrics)
+        private
+
+        def draw_octogon_cell(canvas, point, x, y, cell, metrics) #:nodoc:
           p1 = [x + options[:cell_padding] + metrics[:s4], y + options[:cell_padding]]
           p2 = [x + options[:cell_size] - options[:cell_padding] - metrics[:s4], p1[1]]
           p3 = [x + options[:cell_size] - options[:cell_padding], y + options[:cell_padding] + metrics[:s4]]
@@ -90,7 +101,7 @@ module Theseus
           line(canvas, p8, p1, options[:wall_color]) if cell & Maze::NW == 0
         end
 
-        def draw_square_cell(canvas, point, x, y, cell, metrics)
+        def draw_square_cell(canvas, point, x, y, cell, metrics) #:nodoc:
           v = options[:cell_padding] + metrics[:s4]
           p1 = [x + v, y + v]
           p2 = [x + options[:cell_size] - v, y + options[:cell_size] - v]
