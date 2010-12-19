@@ -216,7 +216,7 @@ if animate
       solver = maze.new_solver(type: solution)
 
       while solver.step
-        path = solver.path(color: png_opts[:solution_color])
+        path = solver.to_path(color: png_opts[:solution_color])
 
         step += 1
         f = "%s-%04d.png" % [output, step]

@@ -2,8 +2,14 @@ require 'theseus/solvers/base'
 
 module Theseus
   module Solvers
+    # An implementation of a recursive backtracker for solving a maze. Although it will
+    # work (eventually) for multiply-connected mazes, it will almost certainly not
+    # return an optimal solution in that case. Thus, this solver is best suited only
+    # for "perfect" mazes (those with no loops).
+    #
+    # For mazes that contain loops, see the Theseus::Solvers::Astar class.
     class Backtracker < Base
-      def initialize(maze, a=maze.start, b=maze.finish)
+      def initialize(maze, a=maze.start, b=maze.finish) #:nodoc:
         super
         @visits = Array.new(@maze.height) { Array.new(@maze.width, 0) }
         @stack = []
@@ -11,11 +17,11 @@ module Theseus
 
       VISIT_MASK = { false => 1, true => 2 }
 
-      def current_solution
+      def current_solution #:nodoc:
         @stack[1..-1].map { |item| item[0] }
       end
 
-      def step
+      def step #:nodoc:
         if @stack == [:fail]
           return false
         elsif @stack.empty?

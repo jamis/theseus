@@ -76,7 +76,7 @@ module Theseus
         @paths = @options[:paths] || []
 
         if @options[:solution]
-          path = maze.new_solver(type: @options[:solution]).solve.path(color: @options[:solution_color])
+          path = maze.new_solver(type: @options[:solution]).solve.to_path(color: @options[:solution_color])
           @paths = [path, *@paths]
         end
       end
