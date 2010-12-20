@@ -79,7 +79,7 @@ Theseus is designed to be super simple to use. Here are some examples:
   puts maze
 
   # render a triangular delta maze to a PNG file
-  maze = Theseus::DeltaMaze.generate(mask: Theseus::TriangularMask.new(10))
+  maze = Theseus::DeltaMaze.generate(mask: Theseus::TriangleMask.new(10))
   File.open("triangle.png", "w") { |f| f.write(maze.to(:png)) }
 
   # render a highly braided, hexagonally-tiled maze, with its solution
