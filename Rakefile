@@ -17,7 +17,7 @@ spec = Gem::Specification.new do |s|
   s.summary = "Maze generator for Ruby"
   s.name = 'theseus'
   s.version = Theseus::Version::STRING
-  s.files = FileList["README.markdown", "Rakefile", "lib/**/*.rb", "bin/*"].to_a
+  s.files = FileList["README.rdoc", "Rakefile", "lib/**/*.rb", "examples/**/*.rb", "bin/*", "test/**/*.rb"].to_a
   s.executables << "theseus"
   s.add_dependency "chunky_png", "~> 0.12.0"
   s.requirements << "Ruby 1.9"
@@ -35,4 +35,8 @@ end
 Rake::RDocTask.new do |rd|
   rd.main = "README.rdoc"
   rd.rdoc_files.include("README.rdoc", "lib/**/*.rb")
+end
+
+task :clean do
+ rm_rf ["html", "pkg"]
 end
