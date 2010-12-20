@@ -100,6 +100,14 @@ module Theseus
     # to the maze, and generally defaults to the lower-right corner.
     attr_reader :exit
 
+    # The x-coordinate that the generation algorithm will consider next.
+    # This value is meaningless once a maze has been generated.
+    attr_reader :x
+
+    # The y-coordinate that the generation algorithm will consider next.
+    # This value is meaningless once a maze has been generated.
+    attr_reader :y
+
     # A short-hand method for creating a new maze object and causing it to
     # be generated, in one step. Returns the newly generated maze.
     def self.generate(options={})
@@ -605,6 +613,30 @@ module Theseus
       end
     end
 
+    # Applies a move in the given direction to the cell at (x,y). The +direction+
+    # parameter may also be :under, in which case the cell is left-shifted so as
+    # to move the existing passages to the UNDER plane.
+    #
+    # This method also handles the application of symmetrical moves, in the case
+    # where #symmetry has been specified.
+    #
+    # You'll generally never call this method directly, except to construct grids
+    # yourself.
+    def apply_move_at(x, y, direction)
+      if direction == :under
+        @cells[y][x] <<= UNDER_SHIFT
+      else
+        @cells[y][x] |= direction
+      end
+
+      case @symmetry
+      when :x      then move_symmetrically_in_x(x, y, direction)
+      when :y      then move_symmetrically_in_y(x, y, direction)
+      when :xy     then move_symmetrically_in_xy(x, y, direction)
+      when :radial then move_symmetrically_radially(x, y, direction)
+      end
+    end
+
     # Returns the type of the maze as a string. OrthogonalMaze, for
     # instance, is reported as "orthogonal".
     def type
@@ -716,27 +748,6 @@ module Theseus
             @x, @y, @tries = @stack.pop
           end
         end
-      end
-    end
-
-    # Applies a move in the given direction to the cell at (x,y). The +direction+
-    # parameter may also be :under, in which case the cell is left-shifted so as
-    # to move the existing passages to the UNDER plane.
-    #
-    # This method also handles the application of symmetrical moves, in the case
-    # where #symmetry has been specified.
-    def apply_move_at(x, y, direction) #:nodoc:
-      if direction == :under
-        @cells[y][x] <<= UNDER_SHIFT
-      else
-        @cells[y][x] |= direction
-      end
-
-      case @symmetry
-      when :x      then move_symmetrically_in_x(x, y, direction)
-      when :y      then move_symmetrically_in_y(x, y, direction)
-      when :xy     then move_symmetrically_in_xy(x, y, direction)
-      when :radial then move_symmetrically_radially(x, y, direction)
       end
     end
 
