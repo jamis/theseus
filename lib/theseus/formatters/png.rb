@@ -70,7 +70,7 @@ module Theseus
         @options = DEFAULTS.merge(options)
 
         [:background, :wall_color, :cell_color, :solution_color].each do |c|
-          @options[c] = ChunkyPNG::Color.from_hex(@options[c]) unless Fixnum === @options[c]
+          @options[c] = ChunkyPNG::Color.from_hex(@options[c]) if String === @options[c]
         end
 
         @paths = @options[:paths] || []
