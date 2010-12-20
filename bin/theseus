@@ -57,7 +57,7 @@ OptionParser.new do |opts|
     format = f.to_sym
   end
 
-  opts.on("-v", "--solve [METHOD]", "whether to display the solution of the maze.", "METHOD is either `backtracker' (the default) or `astar'") do |s|
+  opts.on("-V", "--solve [METHOD]", "whether to display the solution of the maze.", "METHOD is either `backtracker' (the default) or `astar'") do |s|
     png_opts[:solution] = (s || :backtracker).to_sym
   end
 
@@ -145,6 +145,17 @@ OptionParser.new do |opts|
 
   opts.separator ""
   opts.separator "Other options:"
+
+  opts.on_tail("-v", "--version", "display the Theseus version and exit") do
+    maze = Theseus::OrthogonalMaze.generate(width: 20, height: 4)
+    s = maze.to_s(mode: :lines).strip
+    print s.gsub(/^/, "          ").sub(/^\s*/, "theseus --")
+
+    require 'theseus/version'
+    puts "--> v#{Theseus::Version::STRING}"
+    puts "a maze generator, renderer, and solver by Jamis Buck <jamis@jamisbuck.org>"
+    exit
+  end
 
   opts.on_tail("-h", "--help", "this helpful list of options") do
     puts opts

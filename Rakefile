@@ -3,6 +3,8 @@ require 'rake/gempackagetask'
 require 'rake/rdoctask'
 require 'rake/testtask'
 
+require './lib/theseus/version'
+
 task :default => :test
 
 Rake::TestTask.new do |t|
@@ -14,7 +16,7 @@ spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.summary = "Maze generator for Ruby"
   s.name = 'theseus'
-  s.version = "1.0.0"
+  s.version = Theseus::Version::STRING
   s.files = FileList["README.markdown", "Rakefile", "lib/**/*.rb", "bin/*"].to_a
   s.executables << "theseus"
   s.add_dependency "chunky_png", "~> 0.12.0"
