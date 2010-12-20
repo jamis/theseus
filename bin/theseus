@@ -205,7 +205,7 @@ if animate
   maze.generate! do
     if format == :ascii
       system "clear"
-      puts maze.to_s(:mode => :utf8_halls)
+      puts maze.to_s(:mode => :unicode)
       sleep 0.05
     else
       f = "%s-%04d.png" % [output, step]
@@ -217,7 +217,7 @@ if animate
 
   if format == :ascii
     system "clear"
-    puts maze.to_s(:mode => :utf8_halls)
+    puts maze.to_s(:mode => :unicode)
   else
     f = "%s-%04d.png" % [output, step]
     File.open(f, "w") { |io| io.write(maze.to(:png, png_opts)) }
@@ -254,7 +254,7 @@ else
   end
 
   if format == :ascii
-    puts maze.to_s(:mode => :utf8_halls)
+    puts maze.to_s(:mode => :unicode)
   else
     File.open(output + ".png", "w") { |io| io.write(maze.to(:png, png_opts)) }
     puts "maze written to #{output}.png"

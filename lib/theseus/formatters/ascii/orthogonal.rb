@@ -36,6 +36,8 @@ module Theseus
             [maze.width * 3, maze.height * 2]
           when :lines then
             [maze.width, maze.height]
+          else
+            abort "unknown mode #{mode.inspect}"
           end
         end
 
