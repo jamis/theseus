@@ -6,6 +6,7 @@ require 'theseus/formatters/png'
 
 require 'theseus/algorithms/recursive_backtracker'
 require 'theseus/algorithms/kruskal'
+require 'theseus/algorithms/prim'
 
 type_map = {
   "ortho"   => Theseus::OrthogonalMaze,
@@ -16,7 +17,8 @@ type_map = {
 
 algo_map = {
   "recursive" => Theseus::Algorithms::RecursiveBacktracker,
-  "kruskal"  => Theseus::Algorithms::Kruskal,
+  "kruskal"   => Theseus::Algorithms::Kruskal,
+  "prim"      => Theseus::Algorithms::Prim,
 }
 
 animate = false

@@ -24,10 +24,13 @@ module Theseus
     SE = 0x80 # Southeast
 
     # bitmask identifying directional bits on the primary plane
-    PRIMARY = 0x00FF
+    PRIMARY  = 0x000000FF
 
     # bitmask identifying directional bits under the primary plane
-    UNDER   = 0xFF00
+    UNDER    = 0x0000FF00
+
+    # bits reserved for use by individual algorithm implementations
+    RESERVED = 0xFFFF0000
 
     # The size of the PRIMARY bitmask (e.g. how far to the left the
     # UNDER bitmask is shifted).
