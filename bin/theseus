@@ -4,11 +4,19 @@ require 'optparse'
 require 'theseus'
 require 'theseus/formatters/png'
 
+require 'theseus/algorithms/recursive_backtracker'
+require 'theseus/algorithms/kruskal'
+
 type_map = {
   "ortho"   => Theseus::OrthogonalMaze,
   "delta"   => Theseus::DeltaMaze,
   "sigma"   => Theseus::SigmaMaze,
   "upsilon" => Theseus::UpsilonMaze
+}
+
+algo_map = {
+  "recursive" => Theseus::Algorithms::RecursiveBacktracker,
+  "kruskal"  => Theseus::Algorithms::Kruskal,
 }
 
 animate = false
@@ -21,7 +29,7 @@ format = :ascii
 png_opts = Theseus::Formatters::PNG::DEFAULTS.dup
 maze_opts = { mask: nil, width: nil, height: nil,
   randomness: 50, weave: 0, symmetry: :none, braid: 0, wrap: :none,
-  entrance: nil, exit: nil }
+  entrance: nil, exit: nil, algorithm: algo_map["recursive"] }
 
 OptionParser.new do |opts|
   opts.separator ""
@@ -66,6 +74,12 @@ OptionParser.new do |opts|
 
   opts.on("-s", "--seed N", Integer, "random seed to use") do |s|
     srand(s)
+  end
+
+  opts.on("-A", "--algorithm NAME", "the algorithm to use to generate the maze.",
+                                    "may be any of #{algo_map.keys.sort.join(",")}.",
+                                    "defaults to `recursive'.") do |a|
+    maze_opts[:algorithm] = algo_map[a] or abort "unknown algorithm `#{a}'"
   end
 
   opts.on("-t", "--type TYPE", "#{type_map.keys.sort.join(",")} (default: #{type})") do |t|

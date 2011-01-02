@@ -1,5 +1,6 @@
 require 'theseus/mask'
 require 'theseus/path'
+require 'theseus/algorithms/recursive_backtracker'
 
 module Theseus
   # Theseus::Maze is an abstract class, intended to act solely as a superclass
@@ -12,12 +13,6 @@ module Theseus
   # in the high byte (corresponding to the UNDER bitmask) represent passages
   # that are passing under this cell. (Under/over passages are controlled via the
   # #weave setting, and are not supported by all maze types.)
-  #
-  # Mazes are generated using the recursive backtracking algorithm, which is fast,
-  # quite customizable, easily generalized to a variety of different maze types,
-  # and gives generally good results. On the down side, the current implementation
-  # will not regularly generate very challenging mazes, compared to human-built
-  # mazes of the same size.
   class Maze
     N  = 0x01 # North
     S  = 0x02 # South
@@ -37,6 +32,10 @@ module Theseus
     # The size of the PRIMARY bitmask (e.g. how far to the left the
     # UNDER bitmask is shifted).
     UNDER_SHIFT = 8
+
+    # The algorithm object used to generate this maze. Defaults to
+    # an instance of Algorithms::RecursiveBacktracker.
+    attr_reader :algorithm
 
     # The width of the maze (number of columns).
     #
@@ -100,14 +99,6 @@ module Theseus
     # to the maze, and generally defaults to the lower-right corner.
     attr_reader :exit
 
-    # The x-coordinate that the generation algorithm will consider next.
-    # This value is meaningless once a maze has been generated.
-    attr_reader :x
-
-    # The y-coordinate that the generation algorithm will consider next.
-    # This value is meaningless once a maze has been generated.
-    attr_reader :y
-
     # A short-hand method for creating a new maze object and causing it to
     # be generated, in one step. Returns the newly generated maze.
     def self.generate(options={})
@@ -123,6 +114,9 @@ module Theseus
     #                maze types count columns and rows differently; you'll
     #                want to see individual maze types for more info.
     # [:height]      The number of rows in the maze.
+    # [:algorithm]   The maze algorithm to use. This should be a class,
+    #                adhering to the interface described by Theseus::Algorithms::Base.
+    #                It defaults to Theseus::Algorithms::RecursiveBacktracker.
     # [:symmetry]    The symmetry to be used when generating the maze. This
     #                defaults to +:none+, but may also be +:x+ (to have the
     #                maze mirrored across the x-axis), +:y+ (to mirror the
@@ -140,12 +134,14 @@ module Theseus
     # [:mask]        An instance of Theseus::Mask (or something that acts
     #                similarly). This can be used to constrain the maze so that
     #                it fills or avoids specific areas, so that shapes and
-    #                patterns can be made.
+    #                patterns can be made. (NOTE: not all algorithms support
+    #                masks.)
     # [:weave]       An integer between 0 and 100 (inclusive) indicating how
     #                frequently passages move under or over other passages.
     #                A 0 means the passages will never move over/under other
     #                passages, while a 100 means they will do so as often
-    #                as possible. (NOTE: not all maze types support weaving.)
+    #                as possible. (NOTE: not all maze types and algorithms
+    #                support weaving.)
     # [:braid]       An integer between 0 and 100 (inclusive) representing
     #                the percentage of dead-ends that should be removed after
     #                the maze has been generated. Dead-ends are removed by
@@ -192,14 +188,8 @@ module Theseus
       @entrance = options[:entrance] || default_entrance
       @exit = options[:exit] || default_exit
 
-      loop do
-        @y = rand(@cells.length)
-        @x = rand(@cells[@y].length)
-        break if valid?(@x, @y)
-      end
-
-      @tries = potential_exits_at(@x, @y).sort_by { rand }
-      @stack = []
+      algorithm_class = options[:algorithm] || Algorithms::RecursiveBacktracker
+      @algorithm = algorithm_class.new(self, options)
 
       @generated = options[:prebuilt]
     end
@@ -282,23 +272,11 @@ module Theseus
         return !@generated
       end
 
-      direction = next_direction or return !@generated
-      nx, ny = move(@x, @y, direction)
-
-      apply_move_at(@x, @y, direction)
-
-      # if (nx,ny) is already visited, then we're weaving (moving either over
-      # or under the existing passage).
-      nx, ny, direction = perform_weave(@x, @y, nx, ny, direction) if @cells[ny][nx] != 0
-
-      apply_move_at(nx, ny, opposite(direction))
-
-      @stack.push([@x, @y, @tries])
-      @tries = potential_exits_at(nx, ny).sort_by { rand }
-      @tries.push direction if @tries.include?(direction) unless rand(100) < @randomness
-      @x, @y = nx, ny
-
-      return true
+      if @algorithm.step
+        return true
+      else
+        return finish!
+      end
     end
 
     # Returns +true+ if the maze has been generated.
@@ -670,6 +648,32 @@ module Theseus
         generated? ? "generated" : "not generated"]
     end
 
+    # Returns +true+ if a weave may be applied at (thru_x,thru_y) when moving
+    # from (from_x,from_y) in +direction+. This will be true if the thru cell
+    # does not already have anything in its UNDER plane, and if the cell
+    # on the far side of thru is valid and blank.
+    #
+    # Subclasses may need to override this method if special interpretations
+    # for +direction+ need to be considered (see SigmaMaze).
+    def weave_allowed?(from_x, from_y, thru_x, thru_y, direction) #:nodoc:
+      nx2, ny2 = move(thru_x, thru_y, direction)
+      return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
+    end
+
+    def perform_weave(from_x, from_y, to_x, to_y, direction) #:nodoc:
+      if rand(2) == 0 # move under existing passage
+        apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
+        apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)
+      else # move over existing passage
+        apply_move_at(to_x, to_y, :under)
+        apply_move_at(to_x, to_y, direction)
+        apply_move_at(to_x, to_y, opposite(direction))
+      end
+      
+      nx, ny = move(to_x, to_y, direction)
+      [nx, ny, direction]
+    end
+
     private
 
     # Not all maze types support symmetry. If a subclass supports any of the
@@ -723,34 +727,6 @@ module Theseus
       [0, 0] # if every cell is masked, then 0,0 is as good as any!
     end
 
-    # Returns the next direction that ought to be attempted by the recursive
-    # backtracker. This will also handle the backtracking. If there are no
-    # more directions to attempt, and the stack is empty, this will return +nil+.
-    def next_direction #:nodoc:
-      loop do
-        direction = @tries.pop
-        nx, ny = move(@x, @y, direction)
-
-        if valid?(nx, ny) && (@cells[@y][@x] & (direction | (direction << UNDER_SHIFT)) == 0)
-          if @cells[ny][nx] == 0
-            return direction
-          elsif !dead?(@cells[ny][nx]) && @weave > 0 && rand(100) < @weave
-            # see if we can weave over/under the cell at (nx,ny)
-            return direction if weave_allowed?(@x, @y, nx, ny, direction)
-          end
-        end
-
-        while @tries.empty?
-          if @stack.empty?
-            finish!
-            return nil
-          else
-            @x, @y, @tries = @stack.pop
-          end
-        end
-      end
-    end
-
     def move_symmetrically_in_x(x, y, direction) #:nodoc:
       row_width = @cells[y].length
       if direction == :under
@@ -802,6 +778,8 @@ module Theseus
 
       @deadends = deadends_to_braid
       @generated = @deadends.empty?
+
+      return !@generated
     end
 
     # If (x,y) is not a dead-end, this does nothing. Otherwise, it extends the
@@ -823,32 +801,6 @@ module Theseus
           return
         end
       end
-    end
-
-    # Returns +true+ if a weave may be applied at (thru_x,thru_y) when moving
-    # from (from_x,from_y) in +direction+. This will be true if the thru cell
-    # does not already have anything in its UNDER plane, and if the cell
-    # on the far side of thru is valid and blank.
-    #
-    # Subclasses may need to override this method if special interpretations
-    # for +direction+ need to be considered (see SigmaMaze).
-    def weave_allowed?(from_x, from_y, thru_x, thru_y, direction) #:nodoc:
-      nx2, ny2 = move(thru_x, thru_y, direction)
-      return (@cells[thru_y][thru_x] & UNDER == 0) && valid?(nx2, ny2) && @cells[ny2][nx2] == 0
-    end
-
-    def perform_weave(from_x, from_y, to_x, to_y, direction) #:nodoc:
-      if rand(2) == 0 # move under existing passage
-        apply_move_at(to_x, to_y, direction << UNDER_SHIFT)
-        apply_move_at(to_x, to_y, opposite(direction) << UNDER_SHIFT)
-      else # move over existing passage
-        apply_move_at(to_x, to_y, :under)
-        apply_move_at(to_x, to_y, direction)
-        apply_move_at(to_x, to_y, opposite(direction))
-      end
-      
-      nx, ny = move(to_x, to_y, direction)
-      [nx, ny, direction]
     end
 
   end
