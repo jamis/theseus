@@ -59,7 +59,7 @@ module Theseus
         @edges = @edges.sort_by { |e| e.last }
       end
 
-      def step #:nodoc:
+      def do_step #:nodoc:
         until @edges.empty?
           x, y, direction, _ = @edges.pop
           nx, ny = x + @maze.dx(direction), y + @maze.dy(direction)
