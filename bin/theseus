@@ -20,6 +20,7 @@ algo_map = {
 }
 
 animate = false
+delay = 50
 output = "maze"
 sparse = 0
 unicursal = false
@@ -55,6 +56,10 @@ OptionParser.new do |opts|
 
   opts.on("-a", "--[no-]animate", "emit frames for each step") do |v|
     animate = v
+  end
+
+  opts.on("-D", "--delay N", Integer, "time to wait between animation frames, in ms, default is #{delay}") do |d|
+    delay = d
   end
 
   opts.on("-o", "--output FILE", "where to save the file(s) (for png only)") do |f|
@@ -197,6 +202,9 @@ if animate
     warn "if you intend to make a movie out of the frames from the animation,"
     warn "it is HIGHLY RECOMMENDED that you use a fully opaque background color."
   end
+
+  # convert delay to a fraction of a second
+  delay = delay / 1000.0
 end
 
 if unicursal
@@ -215,12 +223,15 @@ if unicursal && !maze.respond_to?(:to_unicursal)
 end
 
 if animate
+  # clear the screen before animating in ASCII mode
+  print "\e[2J" if format == :ascii
+
   step = 0
   maze.generate! do
     if format == :ascii
-      system "clear"
+      print "\e[H" # move to upper-left
       puts maze.to_s(:mode => :unicode)
-      sleep 0.05
+      sleep(delay)
     else
       f = "%s-%04d.png" % [output, step]
       step += 1
@@ -230,7 +241,7 @@ if animate
   end
 
   if format == :ascii
-    system "clear"
+    print "\e[H" # move to upper-left
     puts maze.to_s(:mode => :unicode)
   else
     f = "%s-%04d.png" % [output, step]
