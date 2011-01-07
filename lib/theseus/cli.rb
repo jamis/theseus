@@ -153,6 +153,7 @@ module Theseus
       if @format == :ascii
         puts @maze.to_s(:mode => :unicode)
       else
+        @png_opts[:solution] = @solution
         File.open(@output + ".png", "w") { |io| io.write(@maze.to(:png, @png_opts)) }
         puts "maze written to #{@output}.png"
       end
