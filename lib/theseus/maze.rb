@@ -568,7 +568,21 @@ module Theseus
     # Returns the direction of +to+ relative to +from+. +to+ and +from+
     # are both points (2-tuples).
     def relative_direction(from, to)
-      if from[0] < to[0]
+      # first, look for the case where the maze wraps, and from and to
+      # are on opposite sites of the grid.
+      if wrap_x? && from[1] == to[1] && (from[0] == 0 || to[0] == 0) && (from[0] == @width-1 || to[0] == @width-1)
+        if from[0] < to[0]
+          W
+        else
+          E
+        end
+      elsif wrap_y? && from[0] == to[0] && (from[1] == 0 || to[1] == 0) && (from[1] == @height-1 || to[1] == @height-1)
+        if from[1] < to[1]
+          N
+        else
+          S
+        end
+      elsif from[0] < to[0]
         if from[1] < to[1]
           SE
         elsif from[1] > to[1]
