@@ -21,7 +21,7 @@ module Theseus
           break if @maze.valid?(@x, @y)
         end
 
-        @tries = @maze.potential_exits_at(@x, @y).sort_by { rand }
+        @tries = @maze.potential_exits_at(@x, @y).shuffle
         @stack = []
       end
 
@@ -38,7 +38,7 @@ module Theseus
         @maze.apply_move_at(nx, ny, @maze.opposite(direction))
 
         @stack.push([@x, @y, @tries])
-        @tries = @maze.potential_exits_at(nx, ny).sort_by { rand }
+        @tries = @maze.potential_exits_at(nx, ny).shuffle
         @tries.push direction if @tries.include?(direction) unless rand(100) < @maze.randomness
         @x, @y = nx, ny
 

@@ -705,7 +705,7 @@ module Theseus
       count = ends.length * @braid / 100
       count = 1 if count < 1
 
-      ends.sort_by { rand }[0,count]
+      ends.shuffle[0,count]
     end
 
     # Calculate the default entrance, by looking for the upper-leftmost point.
