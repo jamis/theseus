@@ -117,25 +117,21 @@ module Theseus
       # within the canvas' bounds.
       def line(canvas, p1, p2, color)
         canvas.line(
-          clamp(p1[0].round, 0, canvas.width-1),
-          clamp(p1[1].round, 0, canvas.height-1),
-          clamp(p2[0].round, 0, canvas.width-1),
-          clamp(p2[1].round, 0, canvas.height-1),
+          clamp(p1[0].floor, 0, canvas.width-1),
+          clamp(p1[1].floor, 0, canvas.height-1),
+          clamp(p2[0].floor, 0, canvas.width-1),
+          clamp(p2[1].floor, 0, canvas.height-1),
           color)
       end
 
       # Fills the rectangle defined by the given coordinates with the given color.
       # The coordinates are clamped to lie within the canvas' bounds.
       def fill_rect(canvas, x0, y0, x1, y1, color)
-        x0 = clamp(x0, 0, canvas.width-1)
-        y0 = clamp(y0, 0, canvas.height-1)
-        x1 = clamp(x1, 0, canvas.width-1)
-        y1 = clamp(y1, 0, canvas.height-1)
-        [x0, x1].min.ceil.upto([x0, x1].max.floor) do |x|
-          [y0, y1].min.ceil.upto([y0, y1].max.floor) do |y|
-            canvas.point(x, y, color)
-          end
-        end
+        x0 = clamp(x0, 0, canvas.width-1).floor
+        y0 = clamp(y0, 0, canvas.height-1).floor
+        x1 = clamp(x1, 0, canvas.width-1).floor
+        y1 = clamp(y1, 0, canvas.height-1).floor
+        canvas.rect(x0, y0, x1, y1, color, color)
       end
 
       # Fills the polygon defined by the +points+ array, with the given +color+.
@@ -143,40 +139,12 @@ module Theseus
       # polygon. It is assumed that the polygon is closed. All points are
       # clamped (naively) to lie within the canvas' bounds.
       def fill_poly(canvas, points, color)
-        min_y = 1_000_000
-        max_y = -1_000_000
-        points.each do |x,y|
-          min_y = y if y < min_y
-          max_y = y if y > max_y
+        clamped = points.map do |(x, y)|
+          [ clamp(x.floor, 0, canvas.width - 1),
+            clamp(y.floor, 0, canvas.height - 1) ]
         end
 
-        min_y = clamp(min_y, 0, canvas.height-1)
-        max_y = clamp(max_y, 0, canvas.height-1)
-
-        min_y.floor.upto(max_y.ceil) do |y|
-          nodes = []
-
-          prev = points.last
-          points.each do |point|
-            if point[1] < y && prev[1] >= y || prev[1] < y && point[1] >= y
-              nodes << (point[0] + (y - point[1]).to_f / (prev[1] - point[1]) * (prev[0] - point[0]))
-            end
-            prev = point
-          end
-
-          next if nodes.empty?
-          nodes.sort!
-
-          prev = nil
-          0.step(nodes.length-1, 2) do |a|
-            x1, x2 = nodes[a], nodes[a+1]
-            x1, x2 = x2, x1 if x1 > x2
-            next if x1 < 0 || x2 >= canvas.width
-            x1.ceil.upto(x2.floor) do |x|
-              canvas.point(x, y, color)
-            end
-          end
-        end
+        canvas.polygon(clamped, color, color)
       end
     end
   end

@@ -19,7 +19,7 @@ spec = Gem::Specification.new do |s|
   s.version = Theseus::Version::STRING
   s.files = FileList["README.rdoc", "Rakefile", "lib/**/*.rb", "examples/**/*.rb", "bin/*", "test/**/*.rb"].to_a
   s.executables << "theseus"
-  s.add_dependency "chunky_png", "~> 0.12.0"
+  s.add_dependency "chunky_png", "~> 1.3.0"
   s.requirements << "Ruby 1.9"
   s.description = "Theseus is a library for building random mazes."
   s.author = "Jamis Buck"
