@@ -174,6 +174,8 @@ module Theseus
     #                allowing you to then set the contents of the maze by hand,
     #                using the #[]= method.
     def initialize(options={})
+      @deadends = nil
+
       @width = (options[:width] || 10).to_i
       @height = (options[:height] || 10).to_i
 
@@ -269,8 +271,8 @@ module Theseus
 
       if @deadends && @deadends.any?
         dead_end = @deadends.pop
-        braid(dead_end[0], dead_end[1])
-        
+        braid_cell(dead_end[0], dead_end[1])
+
         @generated = @deadends.empty?
         return !@generated
       end
@@ -330,7 +332,7 @@ module Theseus
     # 1. The coordinates lie within the maze's bounds, and
     # 2. The current mask for the maze does not restrict the location.
     #
-    # If the maze wraps in x, the x coordinate is unconstrained and will be 
+    # If the maze wraps in x, the x coordinate is unconstrained and will be
     # mapped (via modulo) to the bounds. Similarly, if the maze wraps in y,
     # the y coordinate will be unconstrained.
     def valid?(x, y)
@@ -686,7 +688,7 @@ module Theseus
         apply_move_at(to_x, to_y, direction)
         apply_move_at(to_x, to_y, opposite(direction))
       end
-      
+
       nx, ny = move(to_x, to_y, direction)
       [nx, ny, direction]
     end
@@ -804,7 +806,7 @@ module Theseus
     #
     # TODO: look for the direction that results in the longest loop.
     # might be kind of spendy, but worth trying, at least.
-    def braid(x, y) #:nodoc:
+    def braid_cell(x, y) #:nodoc:
       return unless dead?(@cells[y][x])
       tries = potential_exits_at(x, y)
       [opposite(@cells[y][x]), *tries].each do |try|

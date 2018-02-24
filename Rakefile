@@ -1,6 +1,6 @@
 require 'rake'
-require 'rake/gempackagetask'
-require 'rake/rdoctask'
+require 'rubygems/package_task'
+require 'rdoc/task'
 require 'rake/testtask'
 
 require './lib/theseus/version'
@@ -27,9 +27,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = "http://github.com/jamis/theseus"
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
-  pkg.need_zip = true
-  pkg.need_tar = true
+Rake::PackageTask.new('theseus', Theseus::Version::STRING) do |pkg|
 end
 
 Rake::RDocTask.new do |rd|

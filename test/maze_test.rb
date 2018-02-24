@@ -1,7 +1,7 @@
 require 'minitest/autorun'
 require 'theseus'
 
-class MazeTest < MiniTest::Unit::TestCase
+class MazeTest < Minitest::Test
   def test_maze_without_explicit_height_uses_width
     maze = Theseus::OrthogonalMaze.new(width: 10)
     assert_equal 10, maze.width
@@ -140,9 +140,9 @@ class MazeTest < MiniTest::Unit::TestCase
 
   def test_dx_west_should_decrease
     maze = Theseus::OrthogonalMaze.new(width: 10)
-    assert_equal -1, maze.dx(Theseus::Maze::W)
-    assert_equal -1, maze.dx(Theseus::Maze::NW)
-    assert_equal -1, maze.dx(Theseus::Maze::SW)
+    assert_equal(-1, maze.dx(Theseus::Maze::W))
+    assert_equal(-1, maze.dx(Theseus::Maze::NW))
+    assert_equal(-1, maze.dx(Theseus::Maze::SW))
   end
 
   def test_dy_south_should_increase
@@ -154,9 +154,9 @@ class MazeTest < MiniTest::Unit::TestCase
 
   def test_dy_north_should_decrease
     maze = Theseus::OrthogonalMaze.new(width: 10)
-    assert_equal -1, maze.dy(Theseus::Maze::N)
-    assert_equal -1, maze.dy(Theseus::Maze::NE)
-    assert_equal -1, maze.dy(Theseus::Maze::NW)
+    assert_equal(-1, maze.dy(Theseus::Maze::N))
+    assert_equal(-1, maze.dy(Theseus::Maze::NE))
+    assert_equal(-1, maze.dy(Theseus::Maze::NW))
   end
 
   def test_opposite_should_report_inverse_direction
@@ -174,7 +174,7 @@ class MazeTest < MiniTest::Unit::TestCase
   def test_step_should_populate_current_cell_and_next_cell
     maze = Theseus::OrthogonalMaze.new(width: 10)
 
-    cx, cy = maze.x, maze.y
+    cx, cy = maze.algorithm.x, maze.algorithm.y
     assert cx >= 0 && cx < maze.width
     assert cy >= 0 && cy < maze.height
     assert_equal 0, maze[cx, cy]
@@ -186,7 +186,7 @@ class MazeTest < MiniTest::Unit::TestCase
 
     nx, ny = maze.move(cx, cy, direction)
     refute_equal [nx, ny], [cx, cy]
-    assert_equal [nx, ny], [maze.x, maze.y]
+    assert_equal [nx, ny], [maze.algorithm.x, maze.algorithm.y]
 
     assert_equal maze.opposite(direction), maze[nx, ny]
   end
